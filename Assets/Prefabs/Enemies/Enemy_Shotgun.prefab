@@ -193,6 +193,7 @@ MonoBehaviour:
   burstPause: {x: 0.9, y: 1.4}
   magazineSize: 6
   range: 25
+  attackRange: 14
   reloadTime: 0
   shotgunReloadTimes: {x: 0.67, y: 0.92, z: 0.85}
   behavior: 0
@@ -200,15 +201,48 @@ MonoBehaviour:
   guardScanPeriod: 6
   patrolPoints: []
   patrolWaitTime: 1.5
-  detectionRange: 35
-  fieldOfView: 120
-  attackRange: 14
-  loseTargetTime: 6
+  suspiciousThreshold: 50
+  combatThreshold: 100
+  decayDelay: 10
+  decayRate: 10
+  centralVisionAngle: 60
+  peripheralVisionAngle: 20
+  centralSuspicionPerSecond: 50
+  peripheralSuspicionPerSecond: 15
+  sightRange: 100
+  movingSpeedThreshold: 0.2
+  patrolReactionDelay: 4
+  suspiciousReactionDelay: 3
+  combatReactionDelay: 2
+  sightGraceTime: 0.5
+  patrolAccuracyPenalty: 0.3
+  combatAccuracyBonus: 0.3
   moveSpeed: 1.4
+  investigateSpeed: 0.9
+  investigateLookTime: 1.5
+  runSpeed: 3.5
+  searchRadius: 8
   walkClipSpeed: 1.67
+  maxWalkPlayback: 2.2
   turnSpeed: 6
-  reactionTime: 0.6
   gravity: -20
+  walkStepSounds:
+  - {fileID: 8300000, guid: 519e49d57deff324882b880aa2848993, type: 3}
+  - {fileID: 8300000, guid: bd63d74025fba98479fe9ff5acf67bcf, type: 3}
+  - {fileID: 8300000, guid: 8a27410d1c73e2a45801a5fe4744b420, type: 3}
+  - {fileID: 8300000, guid: dc5ec9f2b46b5e541842440621b71dc3, type: 3}
+  - {fileID: 8300000, guid: 8b85cad4fcce87d43a0f518faa2015bd, type: 3}
+  runStepSounds:
+  - {fileID: 8300000, guid: 24c160a4539727e47b999d012e945c30, type: 3}
+  - {fileID: 8300000, guid: 3f662091ff575334eb6e44f8badcd7fe, type: 3}
+  - {fileID: 8300000, guid: 747e6c047a8cb884b9a3ff6da2f9e234, type: 3}
+  - {fileID: 8300000, guid: 99927a83022d03e4089f9742b451abe6, type: 3}
+  - {fileID: 8300000, guid: a348999b68e8fbe4c99689088e95ee60, type: 3}
+  walkStepVolume: 0.55
+  runStepVolume: 0.85
+  stepAudibleDistance: 18
+  gunfireAlertRadius: 35
+  showStateIndicator: 1
   corpseLifetime: 20
   weaponDropDelay: 0.3
 --- !u!1 &8953104787003390327
@@ -279,6 +313,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameJam.Combat.HitZone
   owner: {fileID: 0}
   damageMultiplier: 2.5
+  instantKill: 1
 --- !u!1001 &1341618829066546106
 PrefabInstance:
   m_ObjectHideFlags: 0

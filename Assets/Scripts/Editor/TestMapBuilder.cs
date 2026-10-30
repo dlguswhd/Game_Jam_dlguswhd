@@ -1,4 +1,9 @@
 using GameJam.Enemies;
+using GameJam.Player;
+using GameJam.UI;
+using GameJam.Weapons;
+using GameJam.World;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -13,6 +18,7 @@ namespace GameJam.EditorTools
         private const float WallThickness = 0.3f;
         private const string MaterialFolder = "Assets/Materials";
         private const string EnemyFolder = "Assets/Prefabs/Enemies/";
+        private const string NavMeshAssetPath = "Assets/Scenes/SampleScene_NavMesh.asset";
 
         private static Material _wall;
         private static Material _cover;
@@ -50,8 +56,9 @@ namespace GameJam.EditorTools
             WallX(walls, 4f, 20f, 3f);
 
             // Back wall of the hall (z = 25) with doors to the room, corridor and stair area.
-            WallX(walls, -20f, -12f, 25f);
-            WallX(walls, -9f, -4f, 25f);   // door x -12..-9 into the side room
+            WallX(walls, -20f, -10.2f, 25f);
+            WallX(walls, -9f, -4f, 25f);   // swinging door x -10.2..-9 into the side room
+            BuildDoor(map, new Vector3(-9.6f, 0f, 25f), 1.2f);
             WallX(walls, 4f, 9f, 25f);     // corridor x -4..4 left open
             WallX(walls, 12f, 20f, 25f);   // door x 9..12 into the stair area
             WallZ(walls, 25f, 45f, -4f);
@@ -106,16 +113,57 @@ namespace GameJam.EditorTools
             Enemy(enemies, "Rifle", "Guard_Balcony", new Vector3(16f, balconyHeight, 42f), 180f, EnemyBehavior.Guard, null);
             Enemy(enemies, "Pistol", "Patrol_Hall", hallRoute[0].position, 0f, EnemyBehavior.Patrol, hallRoute);
             Enemy(enemies, "Rifle", "Patrol_Corridor", corridorRoute[0].position, 0f, EnemyBehavior.Patrol, corridorRoute);
+            // Sealed room beside the start corridor: footsteps through the wall must NOT reach him,
+            // an unsuppressed shot should (sound through walls counts triple distance).
+            Enemy(enemies, "Pistol", "Guard_BehindWall", new Vector3(-7f, 0f, -1f), 90f, EnemyBehavior.Guard, null);
 
             var player = GameObject.Find("Player");
             if (player != null)
             {
                 Undo.RecordObject(player.transform, "Build Test Map");
                 player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -2f), Quaternion.identity);
+                AddIfMissing<PlayerNoise>(player);
+                AddIfMissing<PlayerInteractor>(player);
+                AddIfMissing<PlayerInventory>(player);
+                AddIfMissing<PlayerLaser>(player);
             }
+
+            var overlay = new GameObject("AI Debug Overlay");
+            overlay.transform.SetParent(map.transform, false);
+            overlay.AddComponent<EnemyDebugOverlay>();
+
+            // Characters are hidden during the bake so their hitboxes don't punch holes in the NavMesh.
+            NavMeshBakeTool.BakeSurface(map, CollectObjects.All, NavMeshAssetPath, enemies, player);
 
             EditorSceneManager.MarkSceneDirty(map.scene);
             Debug.Log("Test map built.");
+        }
+
+        private static void AddIfMissing<T>(GameObject go) where T : Component
+        {
+            if (go.GetComponent<T>() == null) Undo.AddComponent<T>(go);
+        }
+
+        // A plain slab door that swings like the Asylum doors (hinge on its -x edge).
+        private static void BuildDoor(GameObject parent, Vector3 position, float width)
+        {
+            var root = new GameObject("Door_SideRoom");
+            root.transform.SetParent(parent.transform, false);
+            root.transform.localPosition = position;
+
+            var leaf = Box(root, "Leaf", new Vector3(0f, 1.1f, 0f), new Vector3(width, 2.2f, 0.06f), _cover);
+            leaf.isStatic = false;
+
+            var door = root.AddComponent<Door>();
+            door.Configure(new[]
+            {
+                new Door.Leaf
+                {
+                    parts = new[] { leaf.transform },
+                    hinge = new Vector3(-width * 0.5f, 0f, 0f),
+                    center = Vector3.zero
+                }
+            });
         }
 
         private static void Enemy(GameObject parent, string weapon, string name, Vector3 position, float yaw,

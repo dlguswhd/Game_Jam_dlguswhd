@@ -8,6 +8,8 @@ namespace GameJam.Combat
     {
         [SerializeField] private Health owner;
         [SerializeField] private float damageMultiplier = 2f;
+        [Tooltip("Any hit here kills outright (headshots).")]
+        [SerializeField] private bool instantKill = true;
 
         private void Awake()
         {
@@ -16,7 +18,9 @@ namespace GameJam.Combat
 
         public void TakeDamage(float damage, RaycastHit hit, GameObject instigator)
         {
-            if (owner != null) owner.TakeDamage(damage * damageMultiplier, hit, instigator);
+            if (owner == null) return;
+            float dealt = instantKill ? Mathf.Max(owner.Current, damage) : damage * damageMultiplier;
+            owner.TakeDamage(dealt, hit, instigator);
         }
     }
 }

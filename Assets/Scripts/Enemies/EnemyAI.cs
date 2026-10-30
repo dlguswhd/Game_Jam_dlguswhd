@@ -1,9 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using GameJam.Combat;
 using GameJam.Weapons;
+using GameJam.World;
 using KINEMATION.TacticalShooterPack.Scripts.Player;
 using KINEMATION.TacticalShooterPack.Scripts.Weapon;
 using UnityEngine;
+using UnityEngine.AI;
 using Random = UnityEngine.Random;
 
 namespace GameJam.Enemies
@@ -23,6 +26,14 @@ namespace GameJam.Enemies
         Patrol
     }
 
+    // Suspicion (S) drives the state: Patrol below 50, Suspicious from 50, Combat from 100 (Combat never ends).
+    public enum AlertState
+    {
+        Patrol,
+        Suspicious,
+        Combat
+    }
+
     [RequireComponent(typeof(CharacterController), typeof(Health))]
     public class EnemyAI : MonoBehaviour
     {
@@ -31,6 +42,8 @@ namespace GameJam.Enemies
         private static readonly int FireHash = Animator.StringToHash("Fire");
         private static readonly int ReloadHash = Animator.StringToHash("Reload");
         private static readonly int ReloadLoopHash = Animator.StringToHash("ReloadLoop");
+
+        public static readonly List<EnemyAI> All = new List<EnemyAI>();
 
         [Header("Weapon")]
         [SerializeField] private TacticalShooterWeapon weapon;
@@ -43,6 +56,7 @@ namespace GameJam.Enemies
         [SerializeField] private Vector2 burstPause = new Vector2(0.6f, 1.2f);
         [SerializeField] private int magazineSize = 30;
         [SerializeField] private float range = 60f;
+        [SerializeField] private float attackRange = 25f;
 
         [Header("Reload")]
         [Tooltip("Rifle / pistol: length of the reload animation.")]
@@ -59,19 +73,68 @@ namespace GameJam.Enemies
         [SerializeField] private Transform[] patrolPoints;
         [SerializeField] private float patrolWaitTime = 1.5f;
 
-        [Header("Senses & Movement")]
-        [SerializeField] private float detectionRange = 35f;
-        [Tooltip("Field of view used to spot the player before the enemy is alerted (degrees).")]
-        [SerializeField] private float fieldOfView = 120f;
-        [SerializeField] private float attackRange = 25f;
-        [Tooltip("Seconds without seeing the player before going back to guarding / patrolling.")]
-        [SerializeField] private float loseTargetTime = 6f;
+        [Header("Suspicion")]
+        [SerializeField] private float suspiciousThreshold = 50f;
+        [SerializeField] private float combatThreshold = 100f;
+        [Tooltip("Seconds without a new sound (or sighting) before suspicion starts to drop.")]
+        [SerializeField] private float decayDelay = 10f;
+        [Tooltip("Suspicion lost per second once decaying. Combat never decays.")]
+        [SerializeField] private float decayRate = 10f;
+
+        [Header("Vision")]
+        [Tooltip("Full width of the central cone (degrees). Seeing the player here raises suspicion fast.")]
+        [SerializeField] private float centralVisionAngle = 60f;
+        [Tooltip("Extra width on each side of the central cone (degrees). Only a moving player is noticed here.")]
+        [SerializeField] private float peripheralVisionAngle = 20f;
+        [SerializeField] private float centralSuspicionPerSecond = 50f;
+        [SerializeField] private float peripheralSuspicionPerSecond = 15f;
+        [Tooltip("Sight isn't limited by distance in the design; this just caps the raycast.")]
+        [SerializeField] private float sightRange = 100f;
+        [Tooltip("Player speed (m/s) that counts as moving for peripheral vision.")]
+        [SerializeField] private float movingSpeedThreshold = 0.2f;
+
+        [Header("Reaction")]
+        [Tooltip("Delay from first spotting the player to the first shot, by the state the enemy was in.")]
+        [SerializeField] private float patrolReactionDelay = 4f;
+        [SerializeField] private float suspiciousReactionDelay = 3f;
+        [SerializeField] private float combatReactionDelay = 2f;
+        [Tooltip("Losing sight for shorter than this doesn't restart the reaction delay.")]
+        [SerializeField] private float sightGraceTime = 0.5f;
+        [Tooltip("Accuracy lost while still in Patrol (0.3 = spread ×1.3).")]
+        [SerializeField, Range(0f, 1f)] private float patrolAccuracyPenalty = 0.3f;
+        [Tooltip("Accuracy gained in Combat (0.3 = spread ×0.7).")]
+        [SerializeField, Range(0f, 1f)] private float combatAccuracyBonus = 0.3f;
+
+        [Header("Movement")]
         [SerializeField] private float moveSpeed = 1.4f;
+        [Tooltip("Suspicious: slow walk toward the noise.")]
+        [SerializeField] private float investigateSpeed = 0.9f;
+        [Tooltip("Suspicious: time spent looking toward the noise before walking over.")]
+        [SerializeField] private float investigateLookTime = 1.5f;
+        [Tooltip("Combat: running speed while hunting the player.")]
+        [SerializeField] private float runSpeed = 3.5f;
+        [Tooltip("Combat: how far around the last known position to search once there.")]
+        [SerializeField] private float searchRadius = 8f;
         [Tooltip("Ground speed of the Enemy_Walk clip (SKM_Operator@Walking), m/s.")]
         [SerializeField] private float walkClipSpeed = 1.67f;
+        [Tooltip("Upper limit for the walk clip playback rate (running reuses the walk cycle).")]
+        [SerializeField] private float maxWalkPlayback = 2.2f;
         [SerializeField] private float turnSpeed = 6f;
-        [SerializeField] private float reactionTime = 0.6f;
         [SerializeField] private float gravity = -20f;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip[] walkStepSounds;
+        [SerializeField] private AudioClip[] runStepSounds;
+        [SerializeField, Range(0f, 1f)] private float walkStepVolume = 0.55f;
+        [SerializeField, Range(0f, 1f)] private float runStepVolume = 0.85f;
+        [Tooltip("Footsteps fade out linearly to nothing at this distance (m).")]
+        [SerializeField] private float stepAudibleDistance = 18f;
+        [Tooltip("Other enemies within this (sound-travel) distance of a shot join the fight.")]
+        [SerializeField] private float gunfireAlertRadius = 35f;
+
+        [Header("Debug")]
+        [Tooltip("Colored ball above the head: green Patrol, orange Suspicious, red Combat.")]
+        [SerializeField] private bool showStateIndicator = true;
 
         [Header("Death")]
         [SerializeField] private float corpseLifetime = 20f;
@@ -91,12 +154,38 @@ namespace GameJam.Enemies
         private TacticalShooterPlayer _target;
         private Health _targetHealth;
         private Transform _targetCamera;
+        private Vector3 _targetPreviousPosition;
+        private float _targetSpeed;
+
+        private float _suspicion;
+        private bool _inCombat;
+        private float _lastStimulusTime = float.NegativeInfinity;
+
+        private bool _seesTarget;
+        private float _sightStartTime;
+        private float _sightLostTime = float.NegativeInfinity;
+        private float _fireDelay;
+        private Vector3 _lastKnownPosition;
+
+        private bool _hasInvestigatePoint;
+        private Vector3 _investigatePoint;
+        private float _investigateStartTime;
+        private bool _hasSearchPoint;
+        private Vector3 _searchPoint;
+
+        private readonly List<Vector3> _pathCorners = new List<Vector3>();
+        private NavMeshPath _navPath;
+        private Vector3 _pathDestination;
+        private int _pathCorner;
+        private float _nextRepathTime;
+        private float _stuckTime;
+
+        private AudioSource _stepSource;
+        private float _stepTimer;
+        private float _nextGunfireAlertTime;
 
         private int _ammo;
         private bool _isReloading;
-        private bool _isAware;
-        private float _lastSeenTime;
-        private Vector3 _lastKnownPosition;
         private float _nextShotTime;
         private int _shotsLeftInBurst;
         private float _verticalVelocity;
@@ -106,11 +195,16 @@ namespace GameJam.Enemies
         private Quaternion _homeRotation;
         private int _patrolIndex;
         private float _waitUntil;
+        private float _scanBaseYaw;
         private bool _lastHitWasHeadshot;
 
         private readonly RaycastHit[] _hits = new RaycastHit[16];
 
         public bool IsDead => _health.IsDead;
+        public float Suspicion => _suspicion;
+        public AlertState State => _inCombat ? AlertState.Combat
+            : _suspicion >= suspiciousThreshold ? AlertState.Suspicious
+            : AlertState.Patrol;
 
         private void Awake()
         {
@@ -119,10 +213,15 @@ namespace GameJam.Enemies
             _animator = GetComponentInChildren<Animator>();
             _audioSource = GetComponent<AudioSource>();
             _ik = GetComponentInChildren<EnemyAnimatorIK>();
+            _navPath = new NavMeshPath();
+            _stepSource = CreateStepSource();
 
             _health.Died += OnDied;
             _health.Damaged += OnDamaged;
         }
+
+        private void OnEnable() => All.Add(this);
+        private void OnDisable() => All.Remove(this);
 
         private void Start()
         {
@@ -132,6 +231,7 @@ namespace GameJam.Enemies
                 _targetHealth = _target.GetComponent<Health>();
                 var cam = _target.GetComponentInChildren<Camera>();
                 _targetCamera = cam != null ? cam.transform : _target.transform;
+                _targetPreviousPosition = _target.transform.position;
             }
 
             if (weapon != null) weapon.InitializeAsProp(Camera.main);
@@ -140,6 +240,8 @@ namespace GameJam.Enemies
             _homePosition = transform.position;
             _homeRotation = transform.rotation;
             _patrolIndex = ClosestPatrolPoint();
+
+            if (showStateIndicator) gameObject.AddComponent<EnemyStateIndicator>();
         }
 
         private void OnDestroy()
@@ -165,46 +267,70 @@ namespace GameJam.Enemies
         {
             if (IsDead) return;
 
-            bool canSee = false;
-            float distance = float.MaxValue;
-
-            if (TargetAlive)
-            {
-                distance = Vector3.Distance(transform.position, _target.transform.position);
-                canSee = distance <= detectionRange && (_isAware || InFieldOfView()) && HasLineOfSight();
-                if (canSee)
-                {
-                    if (!_isAware) BecomeAware();
-                    _lastSeenTime = Time.time;
-                    _lastKnownPosition = AimPoint;
-                }
-                else if (_isAware && Time.time - _lastSeenTime > loseTargetTime)
-                {
-                    _isAware = false;
-                }
-            }
-            else
-            {
-                _isAware = false;
-            }
-
+            UpdatePerception();
+            UpdateDecay();
             UpdateMovement();
-            UpdateFiring(distance, canSee);
-
-            if (_ik != null)
-            {
-                _ik.isAiming = _isAware && TargetAlive;
-                if (_ik.isAiming) _ik.aimTarget = canSee ? AimPoint : _lastKnownPosition;
-                _ik.handIKWeight = _isReloading ? 0f : 1f;
-            }
+            UpdateFiring();
+            UpdateIK();
         }
 
-        private void BecomeAware()
+        // ---------- Suspicion ----------
+
+        private void AddSuspicion(float amount)
         {
-            _isAware = true;
-            _lastSeenTime = Time.time;
-            _lastKnownPosition = AimPoint;
-            _nextShotTime = Time.time + reactionTime;
+            _suspicion = Mathf.Min(_suspicion + amount, combatThreshold);
+            if (_suspicion >= combatThreshold) EnterCombat();
+        }
+
+        private void EnterCombat()
+        {
+            if (_inCombat) return;
+            _inCombat = true;
+            _suspicion = Mathf.Max(_suspicion, combatThreshold);
+            _hasSearchPoint = false;
+            if (!_seesTarget && _hasInvestigatePoint) _lastKnownPosition = _investigatePoint;
+        }
+
+        private void UpdateDecay()
+        {
+            if (_inCombat || _seesTarget) return;
+            if (Time.time - _lastStimulusTime < decayDelay) return;
+
+            _suspicion = Mathf.Max(0f, _suspicion - decayRate * Time.deltaTime);
+            if (_suspicion < suspiciousThreshold) _hasInvestigatePoint = false;
+        }
+
+        public void HearNoise(Vector3 position, float suspicion)
+        {
+            if (IsDead) return;
+
+            _lastStimulusTime = Time.time;
+
+            if (_inCombat)
+            {
+                // Already fighting: a noise just tells them where to run when they can't see the player.
+                if (!_seesTarget) SetLastKnownPosition(position);
+                return;
+            }
+
+            // A noise somewhere new restarts the "look first, then walk over" investigation.
+            if (!_hasInvestigatePoint || (position - _investigatePoint).sqrMagnitude > 4f)
+                _investigateStartTime = Time.time;
+            _hasInvestigatePoint = true;
+            _investigatePoint = position;
+
+            AddSuspicion(suspicion);
+            if (_inCombat) SetLastKnownPosition(position);
+        }
+
+        // Another enemy is shooting at the player nearby: join the fight and run to where they're aiming.
+        public void HearGunfire(Vector3 target)
+        {
+            if (IsDead) return;
+
+            _lastStimulusTime = Time.time;
+            EnterCombat();
+            if (!_seesTarget) SetLastKnownPosition(target);
         }
 
         private void OnDamaged(float amount, RaycastHit hit, GameObject instigator)
@@ -212,36 +338,106 @@ namespace GameJam.Enemies
             // Remembered so the killing blow can pick the headshot death.
             _lastHitWasHeadshot = hit.collider != null && hit.collider.GetComponent<HitZone>() != null;
 
-            // Getting shot reveals the shooter even from behind.
-            if (!_isAware && TargetAlive) BecomeAware();
+            // Getting shot means a fight, even from behind.
+            _lastStimulusTime = Time.time;
+            EnterCombat();
+            if (!_seesTarget && instigator != null) SetLastKnownPosition(instigator.transform.position);
         }
 
-        private bool InFieldOfView()
+        private void SetLastKnownPosition(Vector3 position)
         {
-            Vector3 toTarget = AimPoint - EyePosition;
-            toTarget.y = 0f;
-            return Vector3.Angle(transform.forward, toTarget) <= fieldOfView * 0.5f;
+            _lastKnownPosition = position;
+            _hasSearchPoint = false;
         }
 
-        // Alerted enemies hold their ground and turn to shoot; otherwise they guard or patrol.
+        // ---------- Vision ----------
+
+        private void UpdatePerception()
+        {
+            AlertState stateBefore = State;
+            bool perceived = false;
+
+            if (TargetAlive)
+            {
+                Vector3 position = _target.transform.position;
+                _targetSpeed = Vector3.Distance(position, _targetPreviousPosition) / Mathf.Max(Time.deltaTime, 0.0001f);
+                _targetPreviousPosition = position;
+
+                Vector3 toTarget = AimPoint - EyePosition;
+                if (toTarget.magnitude <= sightRange && HasLineOfSight())
+                {
+                    toTarget.y = 0f;
+                    float angle = Vector3.Angle(transform.forward, toTarget);
+                    float centralHalf = centralVisionAngle * 0.5f;
+
+                    if (angle <= centralHalf)
+                    {
+                        perceived = true;
+                        AddSuspicion(centralSuspicionPerSecond * Time.deltaTime);
+                    }
+                    else if (angle <= centralHalf + peripheralVisionAngle &&
+                             (_targetSpeed > movingSpeedThreshold || _inCombat))
+                    {
+                        perceived = true;
+                        AddSuspicion(peripheralSuspicionPerSecond * Time.deltaTime);
+                    }
+                }
+            }
+
+            if (perceived)
+            {
+                // A new sighting starts the reaction delay, chosen by how alert the enemy was beforehand.
+                if (!_seesTarget && Time.time - _sightLostTime > sightGraceTime)
+                {
+                    _sightStartTime = Time.time;
+                    _fireDelay = stateBefore == AlertState.Combat ? combatReactionDelay
+                        : stateBefore == AlertState.Suspicious ? suspiciousReactionDelay
+                        : patrolReactionDelay;
+                }
+
+                _lastStimulusTime = Time.time;
+                _lastKnownPosition = _target.transform.position;
+                _hasSearchPoint = false;
+                if (!_hasInvestigatePoint) _investigateStartTime = Time.time;
+                _hasInvestigatePoint = true;
+                _investigatePoint = _target.transform.position;
+            }
+            else if (_seesTarget)
+            {
+                _sightLostTime = Time.time;
+            }
+
+            _seesTarget = perceived;
+        }
+
+        private bool HasLineOfSight()
+        {
+            Vector3 eye = EyePosition;
+            Vector3 toTarget = AimPoint - eye;
+            if (!Raycast(eye, toTarget.normalized, toTarget.magnitude + 0.5f, out RaycastHit hit)) return false;
+            return hit.collider.GetComponentInParent<TacticalShooterPlayer>() == _target;
+        }
+
+        // ---------- Movement ----------
+
         private void UpdateMovement()
         {
             Vector3 desired = Vector3.zero;
             Quaternion? face = null;
 
-            if (_isAware)
+            switch (State)
             {
-                Vector3 toTarget = _lastKnownPosition - transform.position;
-                toTarget.y = 0f;
-                if (toTarget.sqrMagnitude > 0.01f) face = Quaternion.LookRotation(toTarget);
-            }
-            else if (behavior == EnemyBehavior.Patrol && patrolPoints != null && patrolPoints.Length > 0)
-            {
-                desired = UpdatePatrol(out face);
-            }
-            else
-            {
-                desired = UpdateGuard(out face);
+                case AlertState.Combat:
+                    desired = UpdateCombat(out face);
+                    break;
+                case AlertState.Suspicious:
+                    desired = UpdateInvestigate(out face);
+                    break;
+                default:
+                    desired = behavior == EnemyBehavior.Patrol && patrolPoints != null && patrolPoints.Length > 0
+                        ? UpdatePatrol(out face)
+                        : UpdateGuard(out face);
+                    break;
             }
 
             if (face.HasValue)
@@ -250,26 +446,128 @@ namespace GameJam.Enemies
                     1f - Mathf.Exp(-turnSpeed * Time.deltaTime));
             }
 
-            Vector3 targetVelocity = desired * moveSpeed;
-            _velocity = Vector3.Lerp(_velocity, targetVelocity, 1f - Mathf.Exp(-8f * Time.deltaTime));
+            _velocity = Vector3.Lerp(_velocity, desired, 1f - Mathf.Exp(-8f * Time.deltaTime));
 
             if (_controller.isGrounded && _verticalVelocity < 0f) _verticalVelocity = -2f;
             _verticalVelocity += gravity * Time.deltaTime;
             _controller.Move((_velocity + Vector3.up * _verticalVelocity) * Time.deltaTime);
 
+            UpdateStuck(desired);
             UpdateWalkAnimation();
+            UpdateFootsteps();
         }
 
-        // Walks back to the guard spot if pushed off it, then sweeps left and right around the home direction.
+        // Separate 3D source so step sounds don't inherit the gunshot pitch and can carry a shorter distance.
+        private AudioSource CreateStepSource()
+        {
+            var source = new GameObject("Footsteps").AddComponent<AudioSource>();
+            source.transform.SetParent(transform, false);
+            source.playOnAwake = false;
+            source.spatialBlend = 1f;
+            source.rolloffMode = AudioRolloffMode.Linear;
+            source.minDistance = 1.5f;
+            source.maxDistance = stepAudibleDistance;
+            source.dopplerLevel = 0f;
+            return source;
+        }
+
+        // One step per ~0.75 m of ground covered: slow and soft while walking, quick and heavy while running.
+        private void UpdateFootsteps()
+        {
+            float speed = Flat(_controller.velocity).magnitude;
+            if (speed < 0.3f || !_controller.isGrounded)
+            {
+                _stepTimer = Mathf.Min(_stepTimer, 0.15f);
+                return;
+            }
+
+            _stepTimer -= Time.deltaTime;
+            if (_stepTimer > 0f) return;
+            _stepTimer = Mathf.Clamp(0.75f / speed, 0.28f, 0.9f);
+
+            bool running = speed > 2.2f;
+            var clips = running && runStepSounds != null && runStepSounds.Length > 0 ? runStepSounds : walkStepSounds;
+            if (clips == null || clips.Length == 0) return;
+
+            _stepSource.pitch = Random.Range(0.93f, 1.07f);
+            _stepSource.PlayOneShot(clips[Random.Range(0, clips.Length)], running ? runStepVolume : walkStepVolume);
+        }
+
+        // Something the NavMesh doesn't know about (a body, a swinging door) can pin an enemy in place.
+        // After a moment of pushing without moving, give up on the current goal and pick another.
+        private void UpdateStuck(Vector3 desired)
+        {
+            Vector3 actual = Flat(_controller.velocity);
+            bool pushing = desired.magnitude > 0.5f && actual.magnitude < 0.15f;
+            _stuckTime = pushing ? _stuckTime + Time.deltaTime : 0f;
+            if (_stuckTime < 1.5f) return;
+
+            _stuckTime = 0f;
+            _nextRepathTime = 0f;
+            if (State == AlertState.Combat) _hasSearchPoint = false;
+            else if (State == AlertState.Suspicious) _investigatePoint = transform.position;
+        }
+
+        // Sees the player: stand and shoot (closing in if out of range). Otherwise run to where they were
+        // last seen or heard, then keep sweeping random spots around it.
+        private Vector3 UpdateCombat(out Quaternion? face)
+        {
+            face = null;
+
+            if (_seesTarget)
+            {
+                Vector3 toTarget = Flat(_target.transform.position - transform.position);
+                if (toTarget.sqrMagnitude > 0.01f) face = Quaternion.LookRotation(toTarget);
+                if (toTarget.magnitude <= attackRange) return Vector3.zero;
+                return MoveTo(_target.transform.position, runSpeed, ref face);
+            }
+
+            if (!_hasSearchPoint)
+            {
+                if (Flat(_lastKnownPosition - transform.position).magnitude > 1f)
+                    return MoveTo(_lastKnownPosition, runSpeed, ref face);
+
+                _searchPoint = PickSearchPoint(_lastKnownPosition);
+                _hasSearchPoint = true;
+            }
+
+            if (Flat(_searchPoint - transform.position).magnitude < 1f)
+                _searchPoint = PickSearchPoint(_lastKnownPosition);
+
+            return MoveTo(_searchPoint, runSpeed, ref face);
+        }
+
+        // Weapon up, look toward the noise for a moment, then walk over slowly and look around once there.
+        private Vector3 UpdateInvestigate(out Quaternion? face)
+        {
+            face = null;
+            if (!_hasInvestigatePoint) return Vector3.zero;
+
+            Vector3 toPoint = Flat(_investigatePoint - transform.position);
+            if (_seesTarget || Time.time - _investigateStartTime < investigateLookTime)
+            {
+                if (toPoint.sqrMagnitude > 0.01f) face = Quaternion.LookRotation(toPoint);
+                _scanBaseYaw = transform.eulerAngles.y;
+                return Vector3.zero;
+            }
+
+            if (toPoint.magnitude > 1.2f)
+            {
+                _scanBaseYaw = transform.eulerAngles.y;
+                return MoveTo(_investigatePoint, investigateSpeed, ref face);
+            }
+
+            float sweep = Mathf.Sin(Time.time * 2f * Mathf.PI / guardScanPeriod) * 60f;
+            face = Quaternion.Euler(0f, _scanBaseYaw + sweep, 0f);
+            return Vector3.zero;
+        }
+
+        // Walks back to the guard spot if moved off it, then sweeps left and right around the home direction.
         private Vector3 UpdateGuard(out Quaternion? face)
         {
-            Vector3 toHome = _homePosition - transform.position;
-            toHome.y = 0f;
-            if (toHome.magnitude > 0.5f)
-            {
-                face = Quaternion.LookRotation(toHome);
-                return toHome.normalized;
-            }
+            face = null;
+            if (Flat(_homePosition - transform.position).magnitude > 0.5f)
+                return MoveTo(_homePosition, moveSpeed, ref face);
 
             float sweep = Mathf.Sin(Time.time * 2f * Mathf.PI / guardScanPeriod) * guardScanAngle;
             face = _homeRotation * Quaternion.Euler(0f, sweep, 0f);
@@ -288,19 +586,81 @@ namespace GameJam.Enemies
                 return Vector3.zero;
             }
 
-            Vector3 toPoint = point.position - transform.position;
-            toPoint.y = 0f;
-            if (toPoint.magnitude < 0.4f)
+            if (Flat(point.position - transform.position).magnitude < 0.4f)
             {
                 _patrolIndex = (_patrolIndex + 1) % patrolPoints.Length;
                 _waitUntil = Time.time + patrolWaitTime;
                 return Vector3.zero;
             }
 
-            face = Quaternion.LookRotation(toPoint);
-            // Only walk once roughly facing the next point, so corners are turned on the spot.
-            float alignment = Mathf.Clamp01(Vector3.Dot(transform.forward, toPoint.normalized));
-            return transform.forward * alignment * alignment;
+            return MoveTo(point.position, moveSpeed, ref face);
+        }
+
+        // Follows a NavMesh path (straight line if there's no NavMesh) and opens closed doors on the way.
+        private Vector3 MoveTo(Vector3 destination, float speed, ref Quaternion? face)
+        {
+            if (Time.time >= _nextRepathTime || (destination - _pathDestination).sqrMagnitude > 0.25f)
+                RebuildPath(destination);
+
+            while (_pathCorner < _pathCorners.Count - 1 &&
+                   Flat(_pathCorners[_pathCorner] - transform.position).magnitude < 0.35f)
+                _pathCorner++;
+
+            Vector3 corner = _pathCorners.Count > 0 ? _pathCorners[_pathCorner] : destination;
+            Vector3 toCorner = Flat(corner - transform.position);
+            if (toCorner.sqrMagnitude < 0.0001f) return Vector3.zero;
+
+            Vector3 direction = toCorner.normalized;
+            if (!face.HasValue) face = Quaternion.LookRotation(direction);
+            OpenDoorAhead(direction);
+
+            // Turn on the spot first, so corners don't get cut through walls.
+            float alignment = Mathf.Clamp01(Vector3.Dot(transform.forward, direction));
+            return transform.forward * (speed * alignment * alignment);
+        }
+
+        private void RebuildPath(Vector3 destination)
+        {
+            _pathDestination = destination;
+            _nextRepathTime = Time.time + 0.5f;
+            _pathCorners.Clear();
+            _pathCorner = 0;
+
+            if (NavMesh.SamplePosition(transform.position, out NavMeshHit from, 1.5f, NavMesh.AllAreas) &&
+                NavMesh.SamplePosition(destination, out NavMeshHit to, 2f, NavMesh.AllAreas) &&
+                NavMesh.CalculatePath(from.position, to.position, NavMesh.AllAreas, _navPath) &&
+                _navPath.status != NavMeshPathStatus.PathInvalid)
+            {
+                _pathCorners.AddRange(_navPath.corners);
+                if (_pathCorners.Count > 1) _pathCorner = 1;
+                return;
+            }
+
+            _pathCorners.Add(destination);
+        }
+
+        private Vector3 PickSearchPoint(Vector3 around)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                Vector2 offset = Random.insideUnitCircle * searchRadius;
+                Vector3 candidate = around + new Vector3(offset.x, 0f, offset.y);
+                if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 2f, NavMesh.AllAreas)) return hit.position;
+            }
+            return around;
+        }
+
+        private void OpenDoorAhead(Vector3 direction)
+        {
+            foreach (var door in Door.All)
+            {
+                if (door.IsOpen) continue;
+                Vector3 toDoor = door.Center - (transform.position + Vector3.up * 1.1f);
+                if (Mathf.Abs(toDoor.y) > 1.5f) continue;
+                toDoor.y = 0f;
+                if (toDoor.magnitude > 1.3f || Vector3.Dot(toDoor.normalized, direction) < 0.3f) continue;
+                door.Toggle(transform.position);
+            }
         }
 
         private int ClosestPatrolPoint()
@@ -320,25 +680,10 @@ namespace GameJam.Enemies
             return best;
         }
 
-        private void OnDrawGizmosSelected()
+        private static Vector3 Flat(Vector3 v)
         {
-            Gizmos.color = Color.yellow;
-            Vector3 eye = transform.position + Vector3.up * 1.6f;
-            Vector3 left = Quaternion.Euler(0f, -fieldOfView * 0.5f, 0f) * transform.forward;
-            Vector3 right = Quaternion.Euler(0f, fieldOfView * 0.5f, 0f) * transform.forward;
-            Gizmos.DrawLine(eye, eye + left * Mathf.Min(detectionRange, 10f));
-            Gizmos.DrawLine(eye, eye + right * Mathf.Min(detectionRange, 10f));
-
-            if (behavior != EnemyBehavior.Patrol || patrolPoints == null) return;
-            Gizmos.color = Color.cyan;
-            for (int i = 0; i < patrolPoints.Length; i++)
-            {
-                Transform a = patrolPoints[i];
-                Transform b = patrolPoints[(i + 1) % patrolPoints.Length];
-                if (a == null || b == null) continue;
-                Gizmos.DrawSphere(a.position, 0.15f);
-                Gizmos.DrawLine(a.position, b.position);
-            }
+            v.y = 0f;
+            return v;
         }
 
         // Drives the SKM_Operator Walking cycle: full stride as soon as the enemy moves, played back at a
@@ -351,7 +696,7 @@ namespace GameJam.Enemies
 
             _animator.SetFloat(SpeedHash, Mathf.Clamp01(speed / 0.4f), 0.15f, Time.deltaTime);
 
-            float playback = Mathf.Clamp(speed / walkClipSpeed, 0.5f, 1.5f);
+            float playback = Mathf.Clamp(speed / walkClipSpeed, 0.5f, maxWalkPlayback);
             _animator.SetFloat(WalkDirHash, backwards ? -playback : playback);
 
             if (_ik == null) return;
@@ -364,13 +709,31 @@ namespace GameJam.Enemies
             _ik.legYaw = Mathf.Lerp(_ik.legYaw, legYaw, 1f - Mathf.Exp(-8f * Time.deltaTime));
         }
 
-        private void UpdateFiring(float distance, bool canSee)
+        // Patrol: weapon lowered. Suspicious / Combat: weapon up, aimed at the player or the point of interest.
+        private void UpdateIK()
         {
-            if (!_isAware || !canSee || _isReloading || distance > attackRange) return;
-            if (Time.time < _nextShotTime) return;
+            if (_ik == null) return;
 
-            Vector3 toTarget = _target.transform.position - transform.position;
-            toTarget.y = 0f;
+            AlertState state = State;
+            _ik.isAiming = state != AlertState.Patrol && TargetAlive;
+            _ik.handIKWeight = _isReloading ? 0f : 1f;
+            if (!_ik.isAiming) return;
+
+            if (_seesTarget) _ik.aimTarget = AimPoint;
+            else if (_velocity.magnitude > 0.3f) _ik.aimTarget = EyePosition + transform.forward * 5f;
+            else if (state == AlertState.Combat) _ik.aimTarget = _lastKnownPosition + Vector3.up * 1.4f;
+            else _ik.aimTarget = EyePosition + transform.forward * 5f;
+        }
+
+        // ---------- Firing ----------
+
+        private void UpdateFiring()
+        {
+            if (!_seesTarget || !TargetAlive || _isReloading) return;
+            if (Time.time < _sightStartTime + _fireDelay || Time.time < _nextShotTime) return;
+
+            Vector3 toTarget = Flat(_target.transform.position - transform.position);
+            if (toTarget.magnitude > attackRange) return;
             if (Vector3.Angle(transform.forward, toTarget) > 20f) return;
             // Standing still while shooting: wait until the walk has come to a stop.
             if (_velocity.magnitude > 0.3f) return;
@@ -387,6 +750,16 @@ namespace GameJam.Enemies
             if (_ammo <= 0) StartCoroutine(Reload());
         }
 
+        private float CurrentSpread()
+        {
+            switch (State)
+            {
+                case AlertState.Patrol: return spreadAngle * (1f + patrolAccuracyPenalty);
+                case AlertState.Combat: return spreadAngle * (1f - combatAccuracyBonus);
+                default: return spreadAngle;
+            }
+        }
+
         private void Fire()
         {
             _ammo--;
@@ -397,15 +770,23 @@ namespace GameJam.Enemies
                 PlayFireSound();
             }
 
+            // Gunfire draws in everyone nearby (once a second is enough during a burst).
+            if (Time.time >= _nextGunfireAlertTime)
+            {
+                _nextGunfireAlertTime = Time.time + 1f;
+                Noise.EmitGunfire(this, gunfireAlertRadius, _target.transform.position);
+            }
+
             _animator.SetTrigger(FireHash);
 
             Vector3 origin = weapon != null ? weapon.GetMuzzlePoint().position : EyePosition;
             Vector3 aimDirection = (AimPoint - origin).normalized;
+            float spread = CurrentSpread();
 
             for (int i = 0; i < pellets; i++)
             {
                 Vector3 direction = Quaternion.AngleAxis(Random.Range(0f, 360f), aimDirection)
-                                    * Quaternion.AngleAxis(Random.Range(0f, spreadAngle), Vector3.Cross(aimDirection, Vector3.up).normalized)
+                                    * Quaternion.AngleAxis(Random.Range(0f, spread), Vector3.Cross(aimDirection, Vector3.up).normalized)
                                     * aimDirection;
 
                 if (Raycast(origin, direction, range, out RaycastHit hit))
@@ -466,14 +847,6 @@ namespace GameJam.Enemies
             _isReloading = false;
         }
 
-        private bool HasLineOfSight()
-        {
-            Vector3 eye = EyePosition;
-            Vector3 toTarget = AimPoint - eye;
-            if (!Raycast(eye, toTarget.normalized, toTarget.magnitude + 0.5f, out RaycastHit hit)) return false;
-            return hit.collider.GetComponentInParent<TacticalShooterPlayer>() == _target;
-        }
-
         // Nearest hit that isn't an enemy (no friendly fire, and teammates don't block line of sight).
         private bool Raycast(Vector3 origin, Vector3 direction, float distance, out RaycastHit closest)
         {
@@ -492,6 +865,45 @@ namespace GameJam.Enemies
 
             return best < float.MaxValue;
         }
+
+        // ---------- Gizmos ----------
+
+        private void OnDrawGizmosSelected()
+        {
+            Vector3 eye = transform.position + Vector3.up * 1.6f;
+            float centralHalf = centralVisionAngle * 0.5f;
+            DrawCone(eye, centralHalf, Color.yellow);
+            DrawCone(eye, centralHalf + peripheralVisionAngle, new Color(1f, 0.5f, 0f));
+
+            if (behavior != EnemyBehavior.Patrol || patrolPoints == null) return;
+            Gizmos.color = Color.cyan;
+            for (int i = 0; i < patrolPoints.Length; i++)
+            {
+                Transform a = patrolPoints[i];
+                Transform b = patrolPoints[(i + 1) % patrolPoints.Length];
+                if (a == null || b == null) continue;
+                Gizmos.DrawSphere(a.position, 0.15f);
+                Gizmos.DrawLine(a.position, b.position);
+            }
+        }
+
+        private void DrawCone(Vector3 eye, float halfAngle, Color color)
+        {
+            Gizmos.color = color;
+            Gizmos.DrawLine(eye, eye + Quaternion.Euler(0f, -halfAngle, 0f) * transform.forward * 8f);
+            Gizmos.DrawLine(eye, eye + Quaternion.Euler(0f, halfAngle, 0f) * transform.forward * 8f);
+        }
+
+#if UNITY_EDITOR
+        // Scene view label with the current state and suspicion, for tuning in Play mode.
+        private void OnDrawGizmos()
+        {
+            if (!Application.isPlaying || IsDead) return;
+            UnityEditor.Handles.Label(transform.position + Vector3.up * 2.2f, $"{State}  S={_suspicion:F0}");
+        }
+#endif
+
+        // ---------- Death ----------
 
         private void OnDied(GameObject killer)
         {

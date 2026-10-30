@@ -283,9 +283,10 @@ namespace GameJam.EditorTools
                 so.FindProperty("reloadTime").floatValue = config.reloadTime;
                 so.FindProperty("attackRange").floatValue = config.attackRange;
                 so.FindProperty("range").floatValue = config.range;
+                AssignStepSounds(so);
                 so.ApplyModifiedPropertiesWithoutUndo();
 
-                // Headshots deal extra damage.
+                // Headshots kill outright (HitZone.instantKill).
                 Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
                 if (head != null)
                 {
@@ -379,6 +380,42 @@ namespace GameJam.EditorTools
             return string.IsNullOrEmpty(name)
                 ? null
                 : AssetDatabase.LoadAssetAtPath<AnimationClip>($"{ClipFolder}/{name}.anim");
+        }
+
+        private const string StepSoundFolder = "Assets/KINEMATION/TacticalShooterPack/SFX/General/";
+
+        // Same concrete walk / run clips the player uses.
+        private static void AssignStepSounds(SerializedObject ai)
+        {
+            FillClips(ai.FindProperty("walkStepSounds"), "Walk/S_Walk_Concrete_");
+            FillClips(ai.FindProperty("runStepSounds"), "Run/S_Run_Concrete_");
+        }
+
+        private static void FillClips(SerializedProperty list, string prefix)
+        {
+            list.arraySize = 5;
+            for (int i = 0; i < 5; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<AudioClip>($"{StepSoundFolder}{prefix}{i + 1}.WAV");
+            }
+        }
+
+        // Adds the step sounds to the existing prefabs without rebuilding them (keeps tuned inspector values).
+        [MenuItem("Tools/Game Jam/Assign Enemy Step Sounds")]
+        public static void AssignStepSoundsToPrefabs()
+        {
+            foreach (var weaponClass in new[] { "Rifle", "Shotgun", "Pistol" })
+            {
+                string path = $"{PrefabFolder}/Enemy_{weaponClass}.prefab";
+                var root = PrefabUtility.LoadPrefabContents(path);
+                var so = new SerializedObject(root.GetComponent<EnemyAI>());
+                AssignStepSounds(so);
+                so.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+            Debug.Log("Enemy step sounds assigned.");
         }
 
         private static void SetField(Object target, string field, float value)

@@ -1,14 +1,25 @@
 using KINEMATION.TacticalShooterPack.Scripts;
 using KINEMATION.TacticalShooterPack.Scripts.Animation;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace GameJam.Player
 {
+    public enum MovementGait
+    {
+        Still,
+        SlowWalk,
+        Walk,
+        Sprint
+    }
+
     // Runs before TacticalShooterPlayer so the yaw it reads has already been turned into body rotation.
     [DefaultExecutionOrder(-50)]
     [RequireComponent(typeof(CharacterController))]
     public class PlayerMovement : MonoBehaviour
     {
+        [Tooltip("Ctrl + WASD: quiet movement.")]
+        [SerializeField] private float slowWalkSpeed = 0.9f;
         [SerializeField] private float walkSpeed = 1.8f;
         [SerializeField] private float sprintSpeed = 3.6f;
         [SerializeField] private float acceleration = 7f;
@@ -43,6 +54,25 @@ namespace GameJam.Player
         private float _verticalVelocity;
         private float _legWeight;
         private float _legYaw;
+        private bool _slowWalk;
+        private float _gait;
+
+        // How the player is moving right now, for footstep noise.
+        public MovementGait Gait
+        {
+            get
+            {
+                if (_horizontalVelocity.magnitude < 0.2f) return MovementGait.Still;
+                if (_slowWalk) return MovementGait.SlowWalk;
+                return _gait > 1.5f ? MovementGait.Sprint : MovementGait.Walk;
+            }
+        }
+
+        // Sent by PlayerInput (Send Messages) for the SlowWalk action (left Ctrl, held).
+        public void OnSlowWalk(InputValue value)
+        {
+            _slowWalk = value.isPressed;
+        }
 
         private void Awake()
         {
@@ -142,8 +172,10 @@ namespace GameJam.Player
             Vector2 input = Vector2.ClampMagnitude(_proceduralAnimation.moveInput, 1f);
 
             // Gait is driven by TacticalShooterPlayer: 1 = walk, 2 = sprint.
-            float gait = _animator.GetFloat(TacShooterUtility.Animator_Gait.hash);
-            float speed = gait > 1f ? Mathf.Lerp(walkSpeed, sprintSpeed, gait - 1f) : walkSpeed;
+            _gait = _animator.GetFloat(TacShooterUtility.Animator_Gait.hash);
+            float speed = _slowWalk ? slowWalkSpeed
+                : _gait > 1f ? Mathf.Lerp(walkSpeed, sprintSpeed, _gait - 1f)
+                : walkSpeed;
 
             Vector3 targetVelocity = (transform.right * input.x + transform.forward * input.y) * speed;
             float alpha = 1f - Mathf.Exp(-acceleration * Time.deltaTime);
