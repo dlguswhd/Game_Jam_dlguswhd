@@ -1,7 +1,5 @@
 using GameJam.Enemies;
-using GameJam.Player;
 using GameJam.UI;
-using GameJam.Weapons;
 using GameJam.World;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -120,12 +118,8 @@ namespace GameJam.EditorTools
             var player = GameObject.Find("Player");
             if (player != null)
             {
-                Undo.RecordObject(player.transform, "Build Test Map");
-                player.transform.SetPositionAndRotation(new Vector3(0f, 0f, -2f), Quaternion.identity);
-                AddIfMissing<PlayerNoise>(player);
-                AddIfMissing<PlayerInteractor>(player);
-                AddIfMissing<PlayerInventory>(player);
-                AddIfMissing<PlayerLaser>(player);
+                LevelBuildTools.MovePlayer(player, new Vector3(0f, 0f, -2f), 0f);
+                LevelBuildTools.EnsurePlayerComponents(player);
             }
 
             var overlay = new GameObject("AI Debug Overlay");
@@ -137,11 +131,6 @@ namespace GameJam.EditorTools
 
             EditorSceneManager.MarkSceneDirty(map.scene);
             Debug.Log("Test map built.");
-        }
-
-        private static void AddIfMissing<T>(GameObject go) where T : Component
-        {
-            if (go.GetComponent<T>() == null) Undo.AddComponent<T>(go);
         }
 
         // A plain slab door that swings like the Asylum doors (hinge on its -x edge).

@@ -13,8 +13,16 @@ namespace GameJam.UI
         private static Sprite _rounded;
 
         private CanvasGroup _group;
-        private Text _key;
-        private Text _label;
+        [System.Serializable]
+        private class Row
+        {
+            public GameObject root;
+            public Text key;
+            public Text label;
+            public CanvasGroup group;
+        }
+        private Row _primary;
+        private Row _secondary;
         private float _alpha;
         private bool _visible;
 
@@ -36,9 +44,29 @@ namespace GameJam.UI
 
         public void Show(string key, string label)
         {
-            _key.text = key;
-            _label.text = label;
+            _primary.key.text = key;
+            _primary.label.text = label;
+            _secondary.root.SetActive(false);
+            SetSelected(_primary, true);
             _visible = true;
+        }
+
+        public void ShowDoor(string label, int selected, bool cameraAvailable)
+        {
+            _primary.key.text = "F";
+            _primary.label.text = label;
+            _secondary.key.text = "F";
+            _secondary.label.text = "내시경 카메라 사용";
+            _secondary.root.SetActive(cameraAvailable);
+            SetSelected(_primary, selected == 0 || !cameraAvailable);
+            SetSelected(_secondary, selected == 1);
+            _visible = true;
+        }
+
+        private static void SetSelected(Row row, bool selected)
+        {
+            row.key.fontStyle = row.label.fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
+            row.group.alpha = selected ? 1f : 0.38f;
         }
 
         public void Hide() => _visible = false;
@@ -54,12 +82,27 @@ namespace GameJam.UI
             Font font = Font.CreateDynamicFontFromOSFont(
                 new[] { "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Arial" }, 24);
 
-            // Pill, horizontally centered a little below the crosshair; it sizes itself to the label.
-            var pill = Panel("Pill", transform, new Color(0.06f, 0.06f, 0.07f, 0.72f));
-            var pillRect = pill.rectTransform;
-            pillRect.anchorMin = pillRect.anchorMax = new Vector2(0.5f, 0.5f);
-            pillRect.pivot = new Vector2(0.5f, 0.5f);
-            pillRect.anchoredPosition = new Vector2(0f, -120f);
+            var stack = UIKit.Rect("Options", transform);
+            stack.anchorMin = stack.anchorMax = new Vector2(0.5f, 0.5f);
+            stack.pivot = new Vector2(0.5f, 1f);
+            stack.anchoredPosition = new Vector2(0f, -95f);
+            UIKit.Column(stack, 8f);
+            var stackFit = stack.gameObject.AddComponent<ContentSizeFitter>();
+            stackFit.horizontalFit = stackFit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _primary = BuildRow(stack, font);
+            _secondary = BuildRow(stack, font);
+            _secondary.root.SetActive(false);
+
+            _group = gameObject.AddComponent<CanvasGroup>();
+            _group.alpha = 0f;
+            _group.blocksRaycasts = false;
+            _group.interactable = false;
+        }
+
+        private static Row BuildRow(Transform parent, Font font)
+        {
+            var pill = Panel("Pill", parent, new Color(0.06f, 0.06f, 0.07f, 0.8f));
+            var row = new Row { root = pill.gameObject, group = pill.gameObject.AddComponent<CanvasGroup>() };
 
             var layout = pill.gameObject.AddComponent<HorizontalLayoutGroup>();
             layout.padding = new RectOffset(8, 22, 8, 8);
@@ -67,23 +110,16 @@ namespace GameJam.UI
             layout.childAlignment = TextAnchor.MiddleLeft;
             layout.childControlWidth = layout.childControlHeight = true;
             layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-            var fitter = pill.gameObject.AddComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             var cap = Panel("KeyCap", pill.transform, new Color(0.93f, 0.93f, 0.9f, 1f));
             var capSize = cap.gameObject.AddComponent<LayoutElement>();
             capSize.preferredWidth = capSize.preferredHeight = Height - 16f;
-            _key = Label("Key", cap.transform, font, 24, FontStyle.Bold, new Color(0.08f, 0.08f, 0.09f));
-            Stretch(_key.rectTransform);
+            row.key = Label("Key", cap.transform, font, 24, FontStyle.Bold, new Color(0.08f, 0.08f, 0.09f));
+            Stretch(row.key.rectTransform);
 
-            _label = Label("Label", pill.transform, font, 25, FontStyle.Normal, new Color(1f, 1f, 1f, 0.94f));
-            _label.gameObject.AddComponent<LayoutElement>().preferredHeight = Height - 16f;
-
-            _group = gameObject.AddComponent<CanvasGroup>();
-            _group.alpha = 0f;
-            _group.blocksRaycasts = false;
-            _group.interactable = false;
+            row.label = Label("Label", pill.transform, font, 25, FontStyle.Normal, new Color(1f, 1f, 1f, 0.94f));
+            row.label.gameObject.AddComponent<LayoutElement>().preferredHeight = Height - 16f;
+            return row;
         }
 
         private static Image Panel(string name, Transform parent, Color color)

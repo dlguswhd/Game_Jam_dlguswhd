@@ -74,6 +74,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameJam.Combat.Health
   maxHealth: 80
+  hitsToKill: 3
 --- !u!82 &7796911479745113567
 AudioSource:
   m_ObjectHideFlags: 0

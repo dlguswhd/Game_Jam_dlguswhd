@@ -21,7 +21,7 @@ namespace GameJam.Player
         [Tooltip("Ctrl + WASD: quiet movement.")]
         [SerializeField] private float slowWalkSpeed = 0.9f;
         [SerializeField] private float walkSpeed = 1.8f;
-        [SerializeField] private float sprintSpeed = 3.6f;
+        [SerializeField] private float sprintSpeed = 4.8f;
         [SerializeField] private float acceleration = 7f;
         [SerializeField] private float gravity = -20f;
 
@@ -57,7 +57,10 @@ namespace GameJam.Player
         private bool _slowWalk;
         private float _gait;
 
-        // How the player is moving right now, for footstep noise.
+        public float PlanarSpeed => _horizontalVelocity.magnitude;
+        public bool IsGrounded => _controller != null && _controller.isGrounded;
+
+        // How the player is moving right now, for footstep noise and sounds.
         public MovementGait Gait
         {
             get

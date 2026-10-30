@@ -42,6 +42,10 @@ namespace GameJam.Weapons
         public float damage = 25f;
         public float range = 300f;
         public float impactForce = 5f;
+        [Tooltip("Total solid thickness a shot can penetrate, in metres. 0 disables wall shots.")]
+        public float penetrationDepth = 0.35f;
+        [Range(0f, 1f)] public float penetrationDamageRetention = 0.65f;
+        [Range(0, 4)] public int maxPenetrations = 2;
         public GunRecoilSettings recoil = new GunRecoilSettings();
 
         [NonSerialized] public TacticalWeaponSettings resolvedSettings;
@@ -108,23 +112,9 @@ namespace GameJam.Weapons
             Vector3 origin = muzzle.position;
             Vector3 direction = muzzle.forward;
 
-            if (Physics.Raycast(origin, direction, out RaycastHit hit, entry.range, hitMask,
-                    QueryTriggerInteraction.Ignore))
-            {
-                if (drawDebugRays) Debug.DrawLine(origin, hit.point, Color.red, 1f);
-
-                hit.collider.GetComponentInParent<IDamageable>()?.TakeDamage(entry.damage, hit, gameObject);
-                if (hit.rigidbody != null) hit.rigidbody.AddForceAtPosition(direction * entry.impactForce,
-                    hit.point, ForceMode.Impulse);
-                if (impactEffectPrefab != null)
-                {
-                    var fx = Instantiate(impactEffectPrefab, hit.point, Quaternion.LookRotation(hit.normal));
-                    Destroy(fx, 5f);
-                }
-                return;
-            }
-
-            if (drawDebugRays) Debug.DrawRay(origin, direction * entry.range, Color.yellow, 1f);
+            BulletTrace.Fire(origin, direction, entry.range, entry.damage, entry.impactForce, hitMask,
+                gameObject, entry.penetrationDepth, entry.maxPenetrations, entry.penetrationDamageRetention,
+                drawDebugRays, impactEffectPrefab);
         }
 
         private void AddRecoil(GunRecoilSettings recoil)

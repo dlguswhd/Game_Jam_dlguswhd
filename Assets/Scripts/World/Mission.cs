@@ -2,12 +2,12 @@ using System;
 using GameJam.Player;
 using GameJam.UI;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace GameJam.World
 {
-    // The level's objective chain: collect each item in order, then reach the exit.
-    // Shows the current objective top-left; on success shows "임무 완료" and restarts the scene.
+    // One per level scene: shows the current objective top-left. The objective is the first step whose item the
+    // player doesn't carry yet, then the final objective. Complete() (called by the getaway car) shows the
+    // "임무 완료" screen and returns to the title.
     public class Mission : MonoBehaviour
     {
         [Serializable]
@@ -19,11 +19,8 @@ namespace GameJam.World
         }
 
         [SerializeField] private Step[] steps;
+        [Tooltip("Shown once every step's item is carried.")]
         [SerializeField] private string extractObjective = "정문으로 탈출하라";
-        [SerializeField] private Transform extractionPoint;
-        [SerializeField] private float extractionRadius = 1.5f;
-        [SerializeField] private float restartDelay = 6f;
-
         private PlayerInventory _inventory;
         private MissionHUD _hud;
         private bool _complete;
@@ -40,8 +37,6 @@ namespace GameJam.World
         {
             if (_hud != null) Destroy(_hud.gameObject);
         }
-
-        private bool AllItemsCollected => CurrentStep == null;
 
         private Step CurrentStep
         {
@@ -62,28 +57,18 @@ namespace GameJam.World
             _hud.SetObjective(step != null ? step.objective : extractObjective);
         }
 
-        private void Update()
+        // Mission accomplished: freeze the player, show the "임무 완료" screen, then back to the title.
+        public void Complete()
         {
-            if (_complete || _inventory == null || extractionPoint == null || !AllItemsCollected) return;
-
-            Vector3 offset = _inventory.transform.position - extractionPoint.position;
-            if (Mathf.Abs(offset.y) > 1.5f) return;
-            offset.y = 0f;
-            if (offset.magnitude > extractionRadius) return;
-
+            if (_complete) return;
             _complete = true;
             _hud.SetObjective("탈출 성공");
-            _hud.ShowBanner("임무 완료");
-            Invoke(nameof(Restart), restartDelay);
-        }
 
-        private void Restart() => SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            var player = _inventory != null ? _inventory.gameObject : null;
+            var input = player != null ? player.GetComponent<UnityEngine.InputSystem.PlayerInput>() : null;
+            if (input != null) input.DeactivateInput();
 
-        private void OnDrawGizmos()
-        {
-            if (extractionPoint == null) return;
-            Gizmos.color = new Color(0.2f, 1f, 0.4f, 0.6f);
-            Gizmos.DrawWireSphere(extractionPoint.position, extractionRadius);
+            EndScreen.ShowMissionComplete(GameProgress.ReturnToTitle);
         }
     }
 }

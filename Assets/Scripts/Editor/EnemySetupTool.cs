@@ -261,6 +261,7 @@ namespace GameJam.EditorTools
 
                 var health = root.AddComponent<Health>();
                 SetField(health, "maxHealth", config.health);
+                SetHitsToKill(health);
 
                 var audio = root.AddComponent<AudioSource>();
                 audio.playOnAwake = false;
@@ -416,6 +417,31 @@ namespace GameJam.EditorTools
                 PrefabUtility.UnloadPrefabContents(root);
             }
             Debug.Log("Enemy step sounds assigned.");
+        }
+
+        // Enemies die to 3 body shots whatever the player's gun (headshots still kill outright).
+        private const int EnemyHitsToKill = 3;
+
+        private static void SetHitsToKill(Object health)
+        {
+            var so = new SerializedObject(health);
+            so.FindProperty("hitsToKill").intValue = EnemyHitsToKill;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // Applies EnemyHitsToKill to the existing prefabs without rebuilding them.
+        [MenuItem("Tools/Game Jam/Apply Enemy Hits To Kill")]
+        public static void ApplyHitsToKillToPrefabs()
+        {
+            foreach (var weaponClass in new[] { "Rifle", "Shotgun", "Pistol" })
+            {
+                string path = $"{PrefabFolder}/Enemy_{weaponClass}.prefab";
+                var root = PrefabUtility.LoadPrefabContents(path);
+                SetHitsToKill(root.GetComponent<Health>());
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+            Debug.Log($"Enemy prefabs: {EnemyHitsToKill} body hits to kill.");
         }
 
         private static void SetField(Object target, string field, float value)

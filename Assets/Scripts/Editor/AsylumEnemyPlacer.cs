@@ -20,10 +20,12 @@ namespace GameJam.EditorTools
         private const float Floor2 = 3.81f;
         private const float FloorBasement = -3.84f;
 
-        // Inside the Gatehouse by the main door (z -13.6), facing its door to the 1st floor hall. Hidden from every
-        // enemy while that door is closed. (The "porch" at z 14 is outside a window and can't reach the building.)
-        private static readonly Vector3 PlayerSpawn = new Vector3(-4.7f, Floor1, -11.5f);
+        // Just inside the main door (MainDoor, z -13.6), facing into the building. The player arrives here from the
+        // village and leaves through the same door. No enemy covers this spot.
+        // (The "porch" at z 14 is outside a window and can't reach the building.)
+        private static readonly Vector3 PlayerSpawn = new Vector3(0f, Floor1, -12.2f);
         private const float PlayerSpawnYaw = 0f;
+        private const string VillageScene = "Bridge_Village";
 
         private const float BodyRadius = 0.5f;
         private const float EyeHeight = 1.6f;
@@ -48,8 +50,8 @@ namespace GameJam.EditorTools
             public float wait;
         }
 
-        // Level layout — see 레벨디자인.md. The critical path is Gatehouse → 1F hall → atrium stairs → 2F office
-        // (keycard) → back down → east wing → basement → morgue (evidence) → main door.
+        // Level layout — see 레벨디자인.md. The critical path is Gatehouse → 1F hall → atrium stairs → 2F rooms
+        // (keycard, random table) → back down → east wing → basement → morgue (ledger) → main door.
         private static readonly GuardSpec[] Guards =
         {
             // 1st floor: rooms off the hall. Closed doors keep them out of play unless the player gets loud.
@@ -212,12 +214,8 @@ namespace GameJam.EditorTools
             var player = GameObject.Find("Player");
             if (player != null)
             {
-                Undo.RecordObject(player.transform, "Place Asylum Enemies");
-                player.transform.SetPositionAndRotation(PlayerSpawn, Quaternion.Euler(0f, PlayerSpawnYaw, 0f));
-                // Footsteps, shots, reloads and doors are what enemies hear.
-                if (player.GetComponent<PlayerNoise>() == null) Undo.AddComponent<PlayerNoise>(player);
-                if (player.GetComponent<PlayerLaser>() == null) Undo.AddComponent<PlayerLaser>(player);
-                if (player.GetComponent<PlayerInventory>() == null) Undo.AddComponent<PlayerInventory>(player);
+                LevelBuildTools.MovePlayer(player, PlayerSpawn, PlayerSpawnYaw);
+                LevelBuildTools.EnsurePlayerComponents(player);
             }
 
             BuildMission(asylum);
@@ -226,8 +224,19 @@ namespace GameJam.EditorTools
             Debug.Log($"Asylum enemies placed: {root.transform.childCount - 1}.");
         }
 
-        // Keycard on the 2F office desk, evidence on the morgue table (clangs when taken), morgue locked
-        // behind the keycard, extraction at the main door.
+        // One table top in each 2F room; the keycard lies on one of them, picked at random once per run.
+        private static readonly Vector3[] KeycardSpots =
+        {
+            new Vector3(8.5f, 4.615f, -7.4f),    // Office desk
+            new Vector3(2.0f, 4.655f, -12.9f),   // Surgery side table
+            new Vector3(-12.3f, 4.613f, -7.3f),  // Exam room table
+            new Vector3(29.3f, 4.61f, 4.3f),     // Classroom teacher's desk
+            new Vector3(-15.2f, 4.584f, -23.6f), // Bedroom bedside table
+            new Vector3(12.7f, 4.613f, -10.4f),  // Kitchen table
+        };
+
+        // Keycard on a random 2F table, ledger on the morgue table (clangs when taken), morgue locked
+        // behind the keycard. The main door leads back out to the village once the ledger is taken.
         private static void BuildMission(GameObject asylum)
         {
             var old = GameObject.Find("Mission");
@@ -236,9 +245,15 @@ namespace GameJam.EditorTools
             var root = new GameObject("Mission");
             Undo.RegisterCreatedObjectUndo(root, "Build Asylum Level");
 
-            Pickup(root, "Keycard", new Vector3(8.5f, 4.615f, -7.4f), "keycard", "열쇠카드",
+            var keycard = Pickup(root, "Keycard", KeycardSpots[0], "keycard", "열쇠카드",
                 PickupItem.Shape.Keycard, new Color(0.85f, 0.9f, 1f), new Color(0.5f, 0.75f, 1f), 0f, 0f);
-            Pickup(root, "Evidence", new Vector3(29.43f, -2.985f, -2.4f), "evidence", "증거 서류",
+            var spot = new SerializedObject(keycard.AddComponent<RandomSpot>());
+            spot.FindProperty("key").stringValue = "Abandoned_Hospital/Keycard";
+            var spots = spot.FindProperty("spots");
+            spots.arraySize = KeycardSpots.Length;
+            for (int i = 0; i < KeycardSpots.Length; i++) spots.GetArrayElementAtIndex(i).vector3Value = KeycardSpots[i];
+            spot.ApplyModifiedPropertiesWithoutUndo();
+            Pickup(root, "Evidence", new Vector3(29.43f, -2.985f, -2.4f), "evidence", "장부",
                 PickupItem.Shape.Folder, new Color(0.55f, 0.4f, 0.22f), new Color(1f, 0.75f, 0.35f), 12f, 60f);
 
             var morgueDoor = asylum.transform.Find("Basement/Morgue/DoorD_V1 (1)")?.GetComponent<Door>();
@@ -253,23 +268,26 @@ namespace GameJam.EditorTools
                 Debug.LogWarning("Morgue door not found (run Setup Asylum Doors first).");
             }
 
-            var exit = new GameObject("Extraction").transform;
-            exit.SetParent(root.transform, false);
-            exit.position = new Vector3(0f, Floor1, -12.6f);
+            LevelBuildTools.Spawn(root, "MainDoor", PlayerSpawn, PlayerSpawnYaw, true);
+            LevelBuildTools.Exit(root, "Exit_MainDoor", new Vector3(0f, Floor1, -13.3f), VillageScene, "HospitalGate",
+                "정문으로 나가기", "evidence", "장부를 찾기 전엔 나갈 수 없다",
+                // Preload the village as soon as the evidence is in hand, wherever the player is.
+                preloadDistance: 10000f);
+            root.AddComponent<SceneFlow>();
 
             var mission = root.AddComponent<Mission>();
             var missionSo = new SerializedObject(mission);
             var steps = missionSo.FindProperty("steps");
             steps.arraySize = 2;
-            steps.GetArrayElementAtIndex(0).FindPropertyRelative("objective").stringValue = "2층 사무실에서 열쇠카드를 찾아라";
+            steps.GetArrayElementAtIndex(0).FindPropertyRelative("objective").stringValue = "2층 방 어딘가에서 열쇠카드를 찾아라";
             steps.GetArrayElementAtIndex(0).FindPropertyRelative("itemId").stringValue = "keycard";
-            steps.GetArrayElementAtIndex(1).FindPropertyRelative("objective").stringValue = "지하 시체안치소에서 증거 서류를 회수하라";
+            steps.GetArrayElementAtIndex(1).FindPropertyRelative("objective").stringValue = "지하 시체안치소에서 장부를 회수하라";
             steps.GetArrayElementAtIndex(1).FindPropertyRelative("itemId").stringValue = "evidence";
-            missionSo.FindProperty("extractionPoint").objectReferenceValue = exit;
+            missionSo.FindProperty("extractObjective").stringValue = "정문으로 탈출하라";
             missionSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void Pickup(GameObject parent, string name, Vector3 position, string id, string displayName,
+        private static GameObject Pickup(GameObject parent, string name, Vector3 position, string id, string displayName,
             PickupItem.Shape shape, Color color, Color glow, float noiseRadius, float noiseSuspicion)
         {
             var go = new GameObject(name);
@@ -285,6 +303,7 @@ namespace GameJam.EditorTools
             so.FindProperty("noiseRadius").floatValue = noiseRadius;
             so.FindProperty("noiseSuspicion").floatValue = noiseSuspicion;
             so.ApplyModifiedPropertiesWithoutUndo();
+            return go;
         }
 
         private static Bounds GetBounds(Transform t)
@@ -300,7 +319,7 @@ namespace GameJam.EditorTools
         }
 
         // Nearest point to the anchor (searched on a 0.25 m grid) that has floor under it and room for a body.
-        private static bool FindFreeSpot(Vector3 anchor, float searchRadius, out Vector3 spot)
+        internal static bool FindFreeSpot(Vector3 anchor, float searchRadius, out Vector3 spot)
         {
             spot = anchor;
             float best = float.MaxValue;
@@ -342,7 +361,7 @@ namespace GameJam.EditorTools
         }
 
         // Enemies follow the NavMesh, so a leg only has to be walkable; without a NavMesh it must be a straight line.
-        private static bool IsPathClear(Vector3 a, Vector3 b)
+        internal static bool IsPathClear(Vector3 a, Vector3 b)
         {
             if (NavMesh.SamplePosition(a, out NavMeshHit from, 1f, NavMesh.AllAreas) &&
                 NavMesh.SamplePosition(b, out NavMeshHit to, 1f, NavMesh.AllAreas))
@@ -359,7 +378,7 @@ namespace GameJam.EditorTools
         }
 
         // Faces the direction with the longest unobstructed view at eye height.
-        private static float LongestSightYaw(Vector3 feet)
+        internal static float LongestSightYaw(Vector3 feet)
         {
             Vector3 eye = feet + Vector3.up * EyeHeight;
             float bestYaw = 0f, bestDistance = -1f;
@@ -377,7 +396,7 @@ namespace GameJam.EditorTools
             return bestYaw;
         }
 
-        private static EnemyAI Enemy(GameObject parent, string weapon, string name, Vector3 position, float yaw,
+        internal static EnemyAI Enemy(GameObject parent, string weapon, string name, Vector3 position, float yaw,
             EnemyBehavior behavior, Transform[] route)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{EnemyFolder}Enemy_{weapon}.prefab");

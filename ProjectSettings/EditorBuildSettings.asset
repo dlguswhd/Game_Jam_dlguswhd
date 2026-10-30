@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/Title.unity
+    guid: 65d2b3c0818fc0741ad716492e470ed2
+  - enabled: 1
+    path: Assets/Scenes/Bridge_Village.unity
+    guid: 2a47113d04038ef4f982cd0b1df3f4ab
+  - enabled: 1
     path: Assets/Scenes/Abandoned_Hospital.unity
     guid: 30fb6719a9eb1d84a807a42d598b16f8
   - enabled: 1

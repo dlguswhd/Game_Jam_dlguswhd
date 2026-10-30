@@ -1,4 +1,6 @@
+using GameJam.Diagnostics;
 using GameJam.World;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -18,10 +20,15 @@ namespace GameJam.Enemies
         public static float WallMuffling = 3f;
 
         private static readonly NavMeshPath Path = new NavMeshPath();
+        // NavMeshPath.corners allocates a new array every call; read into this buffer instead.
+        private static readonly Vector3[] Corners = new Vector3[64];
         private static readonly RaycastHit[] Hits = new RaycastHit[16];
+
+        private static readonly ProfilerMarker EmitMarker = new ProfilerMarker(PerfProbe.NoiseEmit);
 
         public static void Emit(Vector3 position, float radius, float suspicion)
         {
+            using var _ = EmitMarker.Auto();
             for (int i = EnemyAI.All.Count - 1; i >= 0; i--)
             {
                 var enemy = EnemyAI.All[i];
@@ -34,8 +41,11 @@ namespace GameJam.Enemies
 
         // An enemy's gunshot: every other enemy it carries to joins the fight, heading for where the shooter
         // is aiming (the player), not for the shooter.
+        private static readonly ProfilerMarker GunfireMarker = new ProfilerMarker(PerfProbe.GunfireAlert);
+
         public static void EmitGunfire(EnemyAI shooter, float radius, Vector3 target)
         {
+            using var _ = GunfireMarker.Auto();
             Vector3 origin = shooter.transform.position;
             for (int i = EnemyAI.All.Count - 1; i >= 0; i--)
             {
@@ -62,15 +72,15 @@ namespace GameJam.Enemies
                 return throughWalls;
 
             float distance = 0f;
-            Vector3[] corners = Path.corners;
-            for (int i = 1; i < corners.Length; i++)
+            int count = Path.GetCornersNonAlloc(Corners);
+            for (int i = 1; i < count; i++)
             {
-                distance += Vector3.Distance(corners[i - 1], corners[i]);
-                distance += ClosedDoorsOn(corners[i - 1], corners[i]) * ClosedDoorPenalty;
+                distance += Vector3.Distance(Corners[i - 1], Corners[i]);
+                distance += ClosedDoorsOn(Corners[i - 1], Corners[i]) * ClosedDoorPenalty;
             }
 
 #if UNITY_EDITOR
-            for (int i = 1; i < corners.Length; i++) Debug.DrawLine(corners[i - 1], corners[i], Color.cyan, 0.5f);
+            for (int i = 1; i < count; i++) Debug.DrawLine(Corners[i - 1], Corners[i], Color.cyan, 0.5f);
 #endif
             return Mathf.Min(distance, throughWalls);
         }

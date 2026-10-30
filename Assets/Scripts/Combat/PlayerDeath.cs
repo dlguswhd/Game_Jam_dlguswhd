@@ -1,16 +1,16 @@
 using GameJam.Player;
+using GameJam.UI;
+using GameJam.World;
 using KINEMATION.TacticalShooterPack.Scripts.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 namespace GameJam.Combat
 {
+    // On death: stop all control, show the "사망" screen, then restart the scene from its checkpoint.
     [RequireComponent(typeof(Health))]
     public class PlayerDeath : MonoBehaviour
     {
-        [SerializeField] private float restartDelay = 3f;
-
         private Health _health;
 
         private void Awake()
@@ -37,13 +37,8 @@ namespace GameJam.Combat
             if (movement != null) movement.enabled = false;
 
             Debug.Log($"Player killed by {(killer != null ? killer.name : "unknown")}");
-            Invoke(nameof(Restart), restartDelay);
-        }
-
-        private void Restart()
-        {
-            // The scene has to be listed in Build Profiles for this to work.
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            // Back to how this scene was when the player entered it (items and kills since then are undone).
+            EndScreen.ShowDeath(GameProgress.RestartFromCheckpoint);
         }
     }
 }

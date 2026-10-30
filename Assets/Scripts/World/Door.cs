@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using GameJam.Diagnostics;
 using GameJam.Player;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -104,7 +106,20 @@ namespace GameJam.World
         public string GetLabel(GameObject user)
         {
             if (IsLockedFor(user)) return lockedLabel;
-            return IsOpen ? "문 닫기" : "문 밀기";
+            return IsOpen ? "문 닫기" : "문 열기";
+        }
+
+        // Probe passes under the closed leaf and emerges on the opposite side, close to the floor.
+        public Pose CameraPose(Vector3 userPosition)
+        {
+            Vector3 middle = Vector3.zero;
+            foreach (var leaf in leaves) middle += leaf.center;
+            middle /= Mathf.Max(1, leaves.Length);
+            float side = transform.InverseTransformPoint(userPosition).z >= middle.z ? -1f : 1f;
+            middle.y = 0.18f;
+            middle.z += side * 0.24f;
+            return new Pose(transform.TransformPoint(middle),
+                Quaternion.LookRotation(transform.forward * side + transform.up * 0.36f, transform.up));
         }
 
         public void Interact(GameObject user)
@@ -134,8 +149,11 @@ namespace GameJam.World
             }
         }
 
+        private static readonly ProfilerMarker UpdateMarker = new ProfilerMarker(PerfProbe.DoorUpdate);
+
         private void Update()
         {
+            using var _ = UpdateMarker.Auto();
             for (int i = 0; i < leaves.Length; i++)
             {
                 bool settled = Mathf.Approximately(_angles[i], _targets[i]);

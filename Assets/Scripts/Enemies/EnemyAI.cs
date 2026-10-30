@@ -1,10 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using GameJam.Combat;
+using GameJam.Diagnostics;
 using GameJam.Weapons;
 using GameJam.World;
 using KINEMATION.TacticalShooterPack.Scripts.Player;
 using KINEMATION.TacticalShooterPack.Scripts.Weapon;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.AI;
 using Random = UnityEngine.Random;
@@ -174,6 +176,7 @@ namespace GameJam.Enemies
         private Vector3 _searchPoint;
 
         private readonly List<Vector3> _pathCorners = new List<Vector3>();
+        private static readonly Vector3[] CornerBuffer = new Vector3[64];
         private NavMeshPath _navPath;
         private Vector3 _pathDestination;
         private int _pathCorner;
@@ -263,15 +266,24 @@ namespace GameJam.Enemies
 
         private bool TargetAlive => _target != null && (_targetHealth == null || !_targetHealth.IsDead);
 
+        private static readonly ProfilerMarker UpdateMarker = new ProfilerMarker(PerfProbe.EnemyUpdate);
+        private static readonly ProfilerMarker RepathMarker = new ProfilerMarker(PerfProbe.EnemyRepath);
+        private static readonly ProfilerMarker PerceptionMarker = new ProfilerMarker(PerfProbe.EnemyPerception);
+        private static readonly ProfilerMarker MovementMarker = new ProfilerMarker(PerfProbe.EnemyMovement);
+        private static readonly ProfilerMarker FiringMarker = new ProfilerMarker(PerfProbe.EnemyFiring);
+
         private void Update()
         {
             if (IsDead) return;
 
-            UpdatePerception();
-            UpdateDecay();
-            UpdateMovement();
-            UpdateFiring();
-            UpdateIK();
+            using (UpdateMarker.Auto())
+            {
+                using (PerceptionMarker.Auto()) UpdatePerception();
+                UpdateDecay();
+                using (MovementMarker.Auto()) UpdateMovement();
+                using (FiringMarker.Auto()) UpdateFiring();
+                UpdateIK();
+            }
         }
 
         // ---------- Suspicion ----------
@@ -621,6 +633,7 @@ namespace GameJam.Enemies
 
         private void RebuildPath(Vector3 destination)
         {
+            using var _ = RepathMarker.Auto();
             _pathDestination = destination;
             _nextRepathTime = Time.time + 0.5f;
             _pathCorners.Clear();
@@ -631,7 +644,9 @@ namespace GameJam.Enemies
                 NavMesh.CalculatePath(from.position, to.position, NavMesh.AllAreas, _navPath) &&
                 _navPath.status != NavMeshPathStatus.PathInvalid)
             {
-                _pathCorners.AddRange(_navPath.corners);
+                // NavMeshPath.corners allocates a new array every call; reuse one buffer instead.
+                int count = _navPath.GetCornersNonAlloc(CornerBuffer);
+                for (int i = 0; i < count; i++) _pathCorners.Add(CornerBuffer[i]);
                 if (_pathCorners.Count > 1) _pathCorner = 1;
                 return;
             }
@@ -792,6 +807,7 @@ namespace GameJam.Enemies
                 if (Raycast(origin, direction, range, out RaycastHit hit))
                 {
                     Debug.DrawLine(origin, hit.point, Color.magenta, 0.5f);
+                    if (hit.collider.GetComponentInParent<Door>() != null) BulletImpactMarks.Add(hit);
                     hit.collider.GetComponentInParent<IDamageable>()?.TakeDamage(damage, hit, gameObject);
                 }
                 else

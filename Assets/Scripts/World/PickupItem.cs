@@ -28,12 +28,23 @@ namespace GameJam.World
         public string ItemId => itemId;
         public Vector3 InteractionPoint => transform.position;
 
-        private void Awake() => BuildVisual();
+        private void Awake()
+        {
+            // Already taken on an earlier visit to this scene.
+            if (GameProgress.Items.Contains(itemId))
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+            BuildVisual();
+        }
 
         private void OnEnable() => Interactables.All.Add(this);
         private void OnDisable() => Interactables.All.Remove(this);
 
-        public string GetLabel(GameObject user) => $"줍기 · {displayName}";
+        // Built once: the prompt asks for the label every frame while the player stands next to the item.
+        private string _label;
+        public string GetLabel(GameObject user) => _label ??= $"줍기 · {displayName}";
 
         public void Interact(GameObject user)
         {
