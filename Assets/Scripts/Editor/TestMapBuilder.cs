@@ -18,7 +18,7 @@ namespace GameJam.EditorTools
         private const float WallThickness = 0.3f;
         private const string MaterialFolder = "Assets/Materials";
         private const string EnemyFolder = "Assets/Prefabs/Enemies/";
-        private const string NavMeshAssetPath = "Assets/Scenes/SampleScene_NavMesh.asset";
+        private const string NavMeshAssetPath = "Assets/Scenes/Test_map_NavMesh.asset";
 
         private static Material _wall;
         private static Material _cover;

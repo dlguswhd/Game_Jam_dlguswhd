@@ -12,7 +12,7 @@ namespace GameJam.EditorTools
     // Door leaves are left out so paths go through doorways (enemies open closed doors on the way).
     public static class NavMeshBakeTool
     {
-        private const string AssetPath = "Assets/Abandoned_Asylum/Show_NavMesh.asset";
+        private const string AssetPath = "Assets/Scenes/Abandoned_Hospital_NavMesh.asset";
 
         // Matches the enemy CharacterController; the default 0.5 m radius closes off the 1 m doorways.
         private const float AgentRadius = 0.3f;
@@ -25,7 +25,7 @@ namespace GameJam.EditorTools
             var asylum = GameObject.Find("Asylum");
             if (asylum == null)
             {
-                Debug.LogError("Asylum not found. Open Assets/Abandoned_Asylum/Show.unity first.");
+                Debug.LogError("Asylum not found. Open Assets/Scenes/Abandoned_Hospital.unity first.");
                 return;
             }
 

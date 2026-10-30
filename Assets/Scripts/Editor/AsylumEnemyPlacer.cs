@@ -9,7 +9,7 @@ using UnityEngine.AI;
 
 namespace GameJam.EditorTools
 {
-    // Places enemies in the Abandoned Asylum map (Show scene). Guards stand on the free floor spot closest to
+    // Places enemies in the Abandoned Asylum map (Abandoned_Hospital scene). Guards stand on the free floor spot closest to
     // their room's center and face the longest open sight line (usually the door); patrollers walk the halls.
     public static class AsylumEnemyPlacer
     {
@@ -131,7 +131,7 @@ namespace GameJam.EditorTools
             var asylum = GameObject.Find("Asylum");
             if (asylum == null)
             {
-                Debug.LogError("Asylum not found. Open Assets/Abandoned_Asylum/Show.unity first.");
+                Debug.LogError("Asylum not found. Open Assets/Scenes/Abandoned_Hospital.unity first.");
                 return;
             }
 

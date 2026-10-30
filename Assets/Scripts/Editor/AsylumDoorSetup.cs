@@ -21,7 +21,7 @@ namespace GameJam.EditorTools
             var asylum = GameObject.Find("Asylum");
             if (asylum == null)
             {
-                Debug.LogError("Asylum not found. Open Assets/Abandoned_Asylum/Show.unity first.");
+                Debug.LogError("Asylum not found. Open Assets/Scenes/Abandoned_Hospital.unity first.");
                 return;
             }
 
