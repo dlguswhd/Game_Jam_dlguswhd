@@ -6,6 +6,8 @@
 # See: https://github.com/github/gitignore/tree/main/Global
 #
 .utmp/
+# Do not stage an accidental clone inside this Unity project.
+/Game_Jam_dlguswhd/
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/

@@ -9,13 +9,17 @@ Unity 6000.3.27f1 / URP 기반 잠입 FPS 프로젝트.
 3. Unity가 에셋을 임포트할 때까지 기다립니다.
 4. `Assets/Scenes/Title.unity`를 열고 실행합니다.
 
+프로젝트 루트는 `Assets`, `Packages`, `ProjectSettings`가 바로 들어 있는 폴더입니다. 이 PC에서는 **`C:\GitHub\Game_Jam_dlguswhd`**를 Unity Hub에서 열면 됩니다.
+
+GitHub Desktop에 기존 프로젝트를 등록할 때는 **File → Add local repository**에서 위 폴더를 선택하세요. 이미 있는 프로젝트 폴더 안에 같은 저장소를 다시 Clone하면 `Game_Jam_dlguswhd\Game_Jam_dlguswhd`처럼 중복 프로젝트가 생깁니다. 새로 복제할 때는 상위 저장 위치를 `C:\GitHub`로 선택해 한 단계의 프로젝트 폴더만 만드세요.
+
 KINEMATION Tactical Shooter Pack, Abandoned Asylum, Gang members - characters pack, Flooded Grounds와 차량 모델은 모두 저장소에 포함되어 있습니다. `.meta` 파일과 KINEMATION 내부 수정본도 함께 포함되어 있어 팀원이 같은 파일을 내려받을 수 있습니다. 원본 에셋을 다시 임포트하면 프로젝트에서 수정한 코드·프리팹이 덮어써질 수 있으므로 저장소의 수정본을 기준으로 작업하세요.
 
 대용량 텍스처·모델·오디오는 Git LFS로 관리합니다. GitHub의 ZIP 다운로드 대신 Git LFS가 설치된 Git으로 복제하세요. 이전에 복제한 팀원은 다음 명령으로 원본 에셋까지 받습니다.
 
 ```sh
-git pull
 git lfs install
+git pull
 git lfs pull
 ```
 
