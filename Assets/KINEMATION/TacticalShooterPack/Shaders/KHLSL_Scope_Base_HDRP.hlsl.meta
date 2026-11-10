@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 61d968a82a3c4cf4bbc6ea4e206cd2df
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 311410
+  packageName: Tactical FPS Animations
+  packageVersion: 4.1.0
+  assetPath: Assets/KINEMATION/TacticalShooterPack/Shaders/KHLSL_Scope_Base_HDRP.hlsl
+  uploadId: 1021718

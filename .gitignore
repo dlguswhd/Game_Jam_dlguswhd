@@ -108,13 +108,9 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 
-# Third-party asset store packs (paid, large) - import them from the Asset Store / Package Manager instead
-/[Aa]ssets/KINEMATION/
-/[Aa]ssets/KINEMATION.meta
-/[Aa]ssets/Abandoned_Asylum/
-/[Aa]ssets/Abandoned_Asylum.meta
-/[Aa]ssets/Gang members - characters pack/
-/[Aa]ssets/Gang members - characters pack.meta
+# Include the weapon pack's bundled render-pipeline upgrades with the shared assets.
+!/[Aa]ssets/KINEMATION/**/*.unitypackage
+!/[Aa]ssets/KINEMATION/**/*.unitypackage.meta
 
 # Local Claude Code settings
 /.claude/settings.local.json

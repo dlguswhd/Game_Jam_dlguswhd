@@ -6,14 +6,20 @@ Unity 6000.3.27f1 / URP 기반 잠입 FPS 프로젝트.
 
 1. Git LFS를 설치한 뒤 저장소를 복제합니다. 이미 복제한 경우 저장소에서 `git lfs install`과 `git lfs pull`을 실행합니다.
 2. Unity Hub에서 Unity **6000.3.27f1**로 프로젝트를 엽니다.
-3. 저장소에서 제외된 다음 에셋을 원래 경로로 임포트합니다.
-   - `Assets/KINEMATION` — KINEMATION Tactical Shooter Pack
-   - `Assets/Abandoned_Asylum` — Abandoned Asylum
-   - `Assets/Gang members - characters pack` — Gang members - characters pack
-4. [진행상황.md](진행상황.md)의 **6장·13장 KINEMATION 원본 수정 사항**을 적용합니다. 해당 에셋 폴더는 Git에서 제외되어 원본 수정이 자동으로 복원되지 않습니다.
-5. `Assets/Scenes/Title.unity`를 열고 실행합니다.
+3. Unity가 에셋을 임포트할 때까지 기다립니다.
+4. `Assets/Scenes/Title.unity`를 열고 실행합니다.
 
-Flooded Grounds 에셋과 차량 모델은 이 저장소에 포함되어 있습니다. 대용량 `.tif` 텍스처와 `.blend` 차량 모델은 Git LFS로 관리합니다.
+KINEMATION Tactical Shooter Pack, Abandoned Asylum, Gang members - characters pack, Flooded Grounds와 차량 모델은 모두 저장소에 포함되어 있습니다. `.meta` 파일과 KINEMATION 내부 수정본도 함께 포함되어 있어 팀원이 같은 파일을 내려받을 수 있습니다. 원본 에셋을 다시 임포트하면 프로젝트에서 수정한 코드·프리팹이 덮어써질 수 있으므로 저장소의 수정본을 기준으로 작업하세요.
+
+대용량 텍스처·모델·오디오는 Git LFS로 관리합니다. GitHub의 ZIP 다운로드 대신 Git LFS가 설치된 Git으로 복제하세요. 이전에 복제한 팀원은 다음 명령으로 원본 에셋까지 받습니다.
+
+```sh
+git pull
+git lfs install
+git lfs pull
+```
+
+LFS 파일이 작은 텍스트 포인터 상태로 남아 있으면 Unity에서 원본 에셋을 읽지 못합니다. 이 경우 `git lfs pull`이 오류 없이 완료되는지 먼저 확인하세요.
 
 ## 게임 흐름
 
