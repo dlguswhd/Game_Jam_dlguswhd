@@ -125,6 +125,8 @@ namespace GameJam.EditorTools
             var overlay = new GameObject("AI Debug Overlay");
             overlay.transform.SetParent(map.transform, false);
             overlay.AddComponent<EnemyDebugOverlay>();
+            // Off by default; enable the object in the hierarchy when debugging AI.
+            overlay.SetActive(false);
 
             // Characters are hidden during the bake so their hitboxes don't punch holes in the NavMesh.
             NavMeshBakeTool.BakeSurface(map, CollectObjects.All, NavMeshAssetPath, enemies, player);

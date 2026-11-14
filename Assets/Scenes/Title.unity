@@ -285,8 +285,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae7805b05c9df064cb22f54f1b4c7727, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameJam.UI.TitleScreen
-  gameTitle: 'KILL OR DEAD : Black Ledger'
-  subtitle: ST. MARROW HOSPITAL
+  gameTitle: KILL OR DEAD
   briefing: "\uB3C4\uC2DC \uC678\uACFD, \uD3D0\uC1C4\uB41C \uC138\uC778\uD2B8 \uB9E4\uB85C\uC6B0
     \uBCD1\uC6D0.\n\uAC31\uB2E8\uC774 \uC774\uACF3\uC5D0\uC11C \uBD88\uBC95 \uC7A5\uAE30\uC801\uCD9C\uC744
     \uBC8C\uC774\uACE0, \uC801\uCD9C\uD55C \uC7A5\uAE30\uB97C \uC5B4\uB518\uAC00\uB85C

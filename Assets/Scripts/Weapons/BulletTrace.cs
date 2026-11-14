@@ -39,6 +39,9 @@ namespace GameJam.Weapons
                 if (instigator != null && hit.collider.transform.IsChildOf(instigator.transform)) continue;
                 if (debug) Debug.DrawLine(last, hit.point, penetrated > 0 ? Color.cyan : Color.red, 1f);
                 last = hit.point;
+                // Claymore: a shot on the sensor lens disables it (laser off). Body hits do nothing.
+                var claymore = hit.collider.GetComponentInParent<ClaymoreParts>();
+                if (claymore != null && claymore.IsSensorCollider(hit.collider)) claymore.DestroySensor();
                 var target = hit.collider.GetComponentInParent<IDamageable>();
                 if (target is IScaledDamageable scaled) scaled.TakeScaledDamage(damage, scale, hit, instigator);
                 else target?.TakeDamage(damage * scale, hit, instigator);

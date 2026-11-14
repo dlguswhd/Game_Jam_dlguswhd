@@ -94,6 +94,15 @@ namespace GameJam.World
             Load(FirstLevelScene);
         }
 
+        public const string TestMapScene = "Test_map";
+
+        // From the title's 테스트 모드 button: a fresh run straight into the test map.
+        public static void StartTestMode()
+        {
+            ResetAll();
+            Load(TestMapScene);
+        }
+
         // After the mission is complete (or to quit a run): wipe it and go back to the title screen.
         public static void ReturnToTitle()
         {

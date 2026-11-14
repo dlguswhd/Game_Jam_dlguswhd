@@ -9,8 +9,7 @@ namespace GameJam.UI
     // briefing; Enter there starts the run in the first level.
     public class TitleScreen : MonoBehaviour
     {
-        [SerializeField] private string gameTitle = "KILL OR DEAD : Black Ledger";
-        [SerializeField] private string subtitle = "ST. MARROW HOSPITAL";
+        [SerializeField] private string gameTitle = "KILL OR DEAD";
 
         [TextArea(6, 14)]
         [SerializeField] private string briefing =
@@ -129,22 +128,38 @@ namespace GameJam.UI
             line.rectTransform.anchoredPosition = new Vector2(144f, -370f);
             line.rectTransform.sizeDelta = new Vector2(420f, 4f);
 
-            var sub = UIKit.Label("Subtitle", menu, subtitle, 30, UIKit.MutedText, TextAnchor.MiddleLeft);
-            sub.rectTransform.anchorMin = sub.rectTransform.anchorMax = new Vector2(0f, 1f);
-            sub.rectTransform.pivot = new Vector2(0f, 1f);
-            sub.rectTransform.anchoredPosition = new Vector2(144f, -390f);
-            sub.rectTransform.sizeDelta = new Vector2(900f, 50f);
-
             var buttons = UIKit.Rect("Buttons", menu);
             buttons.anchorMin = buttons.anchorMax = new Vector2(0f, 0f);
             buttons.pivot = new Vector2(0f, 0f);
             buttons.anchoredPosition = new Vector2(140f, 140f);
-            buttons.sizeDelta = new Vector2(440f, 340f);
+            buttons.sizeDelta = new Vector2(440f, 420f);
             UIKit.Column(buttons, 14f);
-            UIKit.Button(buttons, "작전 시작", () => Show(_briefing));
+            var start = UIKit.Button(buttons, "작전 시작", () => Show(_briefing));
+            CrossOut(start);
+            UIKit.Button(buttons, "테스트 모드", StartTestMode);
             UIKit.Button(buttons, "설정", () => Show(_settings));
             UIKit.Button(buttons, "조작법", () => Show(_controls));
             UIKit.Button(buttons, "바탕화면으로 나가기", Quit);
+        }
+
+        private void StartTestMode()
+        {
+            if (_starting) return;
+            _starting = true;
+            GameProgress.StartTestMode();
+        }
+
+        // Locks a menu button: it can't be clicked or highlighted, its label is dimmed and a red X covers it.
+        private static void CrossOut(Button button)
+        {
+            button.interactable = false;
+            var hover = button.GetComponent<ButtonHoverTint>();
+            if (hover != null) Destroy(hover);
+            var label = button.GetComponentInChildren<Text>();
+            if (label != null) label.color = UIKit.MutedText * new Color(1f, 1f, 1f, 0.6f);
+
+            var cross = button.gameObject.AddComponent<CrossLines>();
+            cross.Build(UIKit.Accent, 4f);
         }
 
         private GameObject BuildBriefing(Transform root)
@@ -221,6 +236,52 @@ namespace GameJam.UI
 #else
             Application.Quit();
 #endif
+        }
+    }
+
+    // Two diagonal lines corner to corner over a rect (an "X"). Re-fits whenever the rect's size changes,
+    // so it follows layout groups.
+    public class CrossLines : MonoBehaviour
+    {
+        private RectTransform _rect;
+        private RectTransform _a;
+        private RectTransform _b;
+        private Vector2 _size = new Vector2(-1f, -1f);
+
+        public void Build(Color color, float thickness)
+        {
+            _rect = (RectTransform)transform;
+            _a = Line("CrossA", color, thickness);
+            _b = Line("CrossB", color, thickness);
+            Fit();
+        }
+
+        private RectTransform Line(string name, Color color, float thickness)
+        {
+            var image = UIKit.Fill(name, transform, color);
+            image.raycastTarget = false;
+            var rect = image.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(0f, thickness);
+            return rect;
+        }
+
+        private void LateUpdate() => Fit();
+
+        private void Fit()
+        {
+            if (_rect == null) return;
+            Vector2 size = _rect.rect.size;
+            if (size == _size) return;
+            _size = size;
+            float length = size.magnitude;
+            float angle = Mathf.Atan2(size.y, size.x) * Mathf.Rad2Deg;
+            _a.sizeDelta = new Vector2(length, _a.sizeDelta.y);
+            _b.sizeDelta = new Vector2(length, _b.sizeDelta.y);
+            _a.localRotation = Quaternion.Euler(0f, 0f, angle);
+            _b.localRotation = Quaternion.Euler(0f, 0f, -angle);
         }
     }
 
