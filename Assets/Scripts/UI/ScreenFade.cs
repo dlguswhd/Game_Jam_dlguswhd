@@ -1,4 +1,7 @@
+using System.Collections;
+using GameJam.World;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace GameJam.UI
@@ -44,7 +47,27 @@ namespace GameJam.UI
             _instance._image.color = Color.black;
             _instance._image.raycastTarget = false;
             _instance.SetAlpha(0f, false);
+            SceneManager.sceneLoaded += _instance.OnSceneLoaded;
             return _instance;
+        }
+
+        private void OnDestroy()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (_instance == this) _instance = null;
+        }
+
+        // Level scenes lift the black screen from SceneFlow once they're set up. Scenes without one (Test_map,
+        // Prototype_Play_Map) would otherwise stay black forever, so reveal them one frame in.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (mode == LoadSceneMode.Single) StartCoroutine(RevealIfUnmanaged());
+        }
+
+        private IEnumerator RevealIfUnmanaged()
+        {
+            yield return null;
+            if (FindAnyObjectByType<SceneFlow>() == null) Reveal();
         }
 
         private void SetAlpha(float alpha, bool revealing)

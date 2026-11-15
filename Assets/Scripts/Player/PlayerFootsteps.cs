@@ -57,6 +57,7 @@ namespace GameJam.Player
 
             var clips = sprinting ? _shooter.SprintSounds : _shooter.WalkSounds;
             if (clips == null || clips.Count == 0) return;
+            if (!GameJam.World.CheatModes.FootstepSound) return; // Tab 모드 메뉴: 발소리 OFF
             _source.PlayOneShot(clips[Random.Range(0, clips.Count)], volume);
         }
     }

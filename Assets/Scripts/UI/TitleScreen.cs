@@ -194,30 +194,32 @@ namespace GameJam.UI
         private GameObject BuildControls(Transform root)
         {
             var window = UIKit.RoundedPanel("Controls", root, UIKit.Panel);
-            UIKit.Center(window.rectTransform, new Vector2(1100f, 920f));
+            UIKit.Center(window.rectTransform, new Vector2(1100f, 1000f));
             var column = window.rectTransform;
-            UIKit.Column(column, 4f, 44);
+            UIKit.Column(column, 2f, 40);
 
             var title = UIKit.Label("Title", column, "조작법", 42, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
-            title.gameObject.AddComponent<LayoutElement>().preferredHeight = 64f;
+            title.gameObject.AddComponent<LayoutElement>().preferredHeight = 60f;
 
+            // Every key the game responds to (Inputs_TacticalShooterPack + keys read directly in code).
             (string key, string action)[] rows =
             {
                 ("WASD", "이동"), ("Shift", "달리기 / 조준 중 추가 줌"), ("Ctrl", "천천히 걷기 (소리 작음)"),
-                ("마우스 우클릭", "조준"), ("마우스 좌클릭", "사격"), ("R", "장전"), ("C / 휠", "무기 전환"),
-                ("F / 문 앞 휠", "상호작용 / 문 열기·내시경 선택"), ("내시경", "A·D 좌우 이동 / 마우스 시점 / F 접기"),
-                ("Q / E", "왼쪽 / 오른쪽 기울이기 (토글)"),
-                ("Tab", "조준경 전환 (45° 레드닷)"), ("Y / T", "라이트 / 레이저"), ("Esc", "일시정지 메뉴"),
+                ("Q / E", "왼쪽 / 오른쪽 기울이기 (토글)"), ("Alt", "자유 시점 (토글)"),
+                ("마우스 좌클릭", "사격"), ("마우스 우클릭", "조준 (토글)"), ("R", "장전"), ("B", "발사 모드 변경"),
+                ("C", "무기 전환"), ("X", "권총 빠르게 꺼내기 / 넣기"), ("M / I", "탄창 확인 / 무기 살펴보기"),
+                ("F", "상호작용 (문 열기·줍기) / 길게: 크레모어 해체"), ("Y / T", "라이트 / 레이저"),
+                ("Tab", "모드 설정"), ("Esc", "일시정지 메뉴"),
             };
             foreach (var (key, action) in rows)
             {
                 var row = UIKit.Rect("Row", column);
                 row.gameObject.AddComponent<LayoutElement>().preferredHeight = 44f;
-                var k = UIKit.Label("Key", row, key, 26, UIKit.Accent, TextAnchor.MiddleLeft, FontStyle.Bold);
+                var k = UIKit.Label("Key", row, key, 25, UIKit.Accent, TextAnchor.MiddleLeft, FontStyle.Bold);
                 k.rectTransform.anchorMin = Vector2.zero;
                 k.rectTransform.anchorMax = new Vector2(0.32f, 1f);
                 k.rectTransform.offsetMin = k.rectTransform.offsetMax = Vector2.zero;
-                var a = UIKit.Label("Action", row, action, 26, UIKit.Text, TextAnchor.MiddleLeft);
+                var a = UIKit.Label("Action", row, action, 25, UIKit.Text, TextAnchor.MiddleLeft);
                 a.rectTransform.anchorMin = new Vector2(0.34f, 0f);
                 a.rectTransform.anchorMax = Vector2.one;
                 a.rectTransform.offsetMin = a.rectTransform.offsetMax = Vector2.zero;

@@ -94,9 +94,16 @@ namespace GameJam.World
             Load(FirstLevelScene);
         }
 
-        public const string TestMapScene = "Test_map";
+        // Mode menu's 게임 리셋: wipe the run and load the current scene from scratch.
+        public static void ResetCurrentScene()
+        {
+            ResetAll();
+            Load(SceneManager.GetActiveScene().name);
+        }
 
-        // From the title's 테스트 모드 button: a fresh run straight into the test map.
+        public const string TestMapScene = "Prototype_Play_Map";
+
+        // From the title's 테스트 모드 button: a fresh run straight into the prototype play map.
         public static void StartTestMode()
         {
             ResetAll();

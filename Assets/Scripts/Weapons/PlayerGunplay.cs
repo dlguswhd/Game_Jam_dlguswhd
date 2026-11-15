@@ -103,7 +103,7 @@ namespace GameJam.Weapons
             if (!_entries.TryGetValue(weapon, out var entry)) return;
 
             FireRay(weapon, entry);
-            AddRecoil(entry.recoil);
+            if (!World.CheatModes.NoRecoil) AddRecoil(entry.recoil);
         }
 
         private void FireRay(TacticalShooterWeapon weapon, GunplayEntry entry)

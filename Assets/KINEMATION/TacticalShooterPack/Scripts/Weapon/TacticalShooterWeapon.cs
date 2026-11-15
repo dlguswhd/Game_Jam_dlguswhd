@@ -306,11 +306,15 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Weapon
             PlayMuzzleFlash();
             Fired?.Invoke(this);
 
-            if(_recoilAnimation != null) _recoilAnimation.Play();
-            if(_fpsCamera != null) _fpsCamera.PlayCameraShake(tacWeaponSettings.recoilShake);
+            // (Game Jam) 반동 없음 / 총알 무한 modes from the Tab mode menu.
+            if (!GameJam.World.CheatModes.NoRecoil)
+            {
+                if(_recoilAnimation != null) _recoilAnimation.Play();
+                if(_fpsCamera != null) _fpsCamera.PlayCameraShake(tacWeaponSettings.recoilShake);
+            }
             PlayFireSound();
 
-            _activeAmmo--;
+            if (!GameJam.World.CheatModes.InfiniteAmmo) _activeAmmo--;
             PlayCharacterWeaponAnimation(_activeAmmo > 0
                 ? TacShooterUtility.Animator_Fire.hash
                 : TacShooterUtility.Animator_FireOut.hash);
@@ -484,6 +488,7 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Weapon
 
         protected void PlayFireSound()
         {
+            if (!GameJam.World.CheatModes.GunSound) return; // (Game Jam) Tab mode menu: 총 사운드 OFF
             var sounds = IsSuppressed
                 ? tacWeaponSettings.suppressedFireSounds
                 : tacWeaponSettings.fireSounds;

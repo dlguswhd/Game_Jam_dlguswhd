@@ -56,6 +56,8 @@ namespace GameJam.UI
         {
             var keyboard = Keyboard.current;
             if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame) return;
+            // Esc closes the Tab mode menu instead.
+            if (ModeMenu.BlocksEscape) return;
 
             if (!_paused)
             {

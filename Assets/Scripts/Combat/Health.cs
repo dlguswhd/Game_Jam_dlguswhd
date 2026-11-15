@@ -18,9 +18,13 @@ namespace GameJam.Combat
         public event Action<float, RaycastHit, GameObject> Damaged;
         public event Action<GameObject> Died;
 
+        // The player's Health honours the 무적 mode; enemies never do.
+        private bool _isPlayer;
+
         private void Awake()
         {
             Current = maxHealth;
+            _isPlayer = GetComponent<GameJam.Player.PlayerMovement>() != null;
         }
 
         public void TakeDamage(float damage, RaycastHit hit, GameObject instigator)
@@ -48,6 +52,8 @@ namespace GameJam.Combat
 
         private void Apply(float amount, RaycastHit hit, GameObject instigator)
         {
+            if (_isPlayer && GameJam.World.CheatModes.GodMode) return;
+
             // Small epsilon so N equal shares of maxHealth always add up to a kill despite float rounding.
             Current = Current - amount <= 0.001f ? 0f : Current - amount;
             Damaged?.Invoke(amount, hit, instigator);

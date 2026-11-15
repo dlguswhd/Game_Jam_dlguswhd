@@ -21734,7 +21734,7 @@ PrefabInstance:
     - target: {fileID: 4673422777857529463, guid: b6d4ea9ea9d91294caf1c1199a4a4fc0, type: 3}
       propertyPath: 'weaponPrefabs.Array.data[0]'
       value: 
-      objectReference: {fileID: 6356262942742611153, guid: 5256d02b5d33f504fb997f0b2cf1dc2a, type: 3}
+      objectReference: {fileID: 6005711829078643750, guid: 1c10f0c3a0bfe594d85df9c56192b72d, type: 3}
     - target: {fileID: 4673422777857529463, guid: b6d4ea9ea9d91294caf1c1199a4a4fc0, type: 3}
       propertyPath: 'weaponPrefabs.Array.data[1]'
       value: 
@@ -21786,6 +21786,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1455423802687713497, guid: b6d4ea9ea9d91294caf1c1199a4a4fc0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 813217903}
+    - targetCorrespondingSourceObject: {fileID: 1455423802687713497, guid: b6d4ea9ea9d91294caf1c1199a4a4fc0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 813217916}
   m_SourcePrefab: {fileID: 100100000, guid: b6d4ea9ea9d91294caf1c1199a4a4fc0, type: 3}
 --- !u!1 &813217902 stripped
 GameObject:
@@ -22016,7 +22019,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameJam.Weapons.PlayerGunplay
   weapons:
-  - weaponPrefab: {fileID: 6356262942742611153, guid: 5256d02b5d33f504fb997f0b2cf1dc2a, type: 3}
+  - weaponPrefab: {fileID: 6005711829078643750, guid: 1c10f0c3a0bfe594d85df9c56192b72d, type: 3}
     damage: 30
     range: 300
     impactForce: 5
@@ -22053,6 +22056,18 @@ MonoBehaviour:
     m_Bits: 4294967295
   impactEffectPrefab: {fileID: 0}
   drawDebugRays: 1
+--- !u!114 &813217916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 813217902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7cbe04652d881294399746a16249351a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameJam.UI.ModeMenu
 --- !u!1001 &813368822
 PrefabInstance:
   m_ObjectHideFlags: 0

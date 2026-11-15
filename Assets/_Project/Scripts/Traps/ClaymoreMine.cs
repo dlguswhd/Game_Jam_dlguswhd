@@ -3,6 +3,7 @@ using KINEMATION.KShooterCore.Runtime.Camera;
 using GameJam.Combat;
 using GameJam.Player;
 using GameJam.Weapons;
+using GameJam.World;
 using UnityEngine;
 
 namespace KillOrDead.Traps
@@ -246,6 +247,7 @@ namespace KillOrDead.Traps
         {
             hitDistance = 0f;
             if (_playerController == null || !_playerController.enabled) return false;
+            if (CheatModes.Ghost) return false; // (Game Jam) 유령 모드
 
             // 높이 확인: 빔 높이가 발끝~머리 사이에 있어야 한다. 발끝은 스킨 두께만큼 지면에서 떠 있으니 그만큼 내려 잡는다.
             Bounds body = _playerController.bounds;
@@ -289,6 +291,7 @@ namespace KillOrDead.Traps
         /// <summary>감지 대상은 플레이어뿐이다(기획). 적 AI 포함 여부는 아직 검토 중이라 넣지 않았다.</summary>
         private static bool IsDetectionTarget(Collider col)
         {
+            if (CheatModes.Ghost) return false; // (Game Jam) 유령 모드: 플레이어를 감지하지 않는다
             return col.GetComponentInParent<PlayerMovement>() != null;
         }
 

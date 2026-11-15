@@ -22,7 +22,6 @@ namespace GameJam.UI
             public CanvasGroup group;
         }
         private Row _primary;
-        private Row _secondary;
         private float _alpha;
         private bool _visible;
 
@@ -46,27 +45,7 @@ namespace GameJam.UI
         {
             _primary.key.text = key;
             _primary.label.text = label;
-            _secondary.root.SetActive(false);
-            SetSelected(_primary, true);
             _visible = true;
-        }
-
-        public void ShowDoor(string label, int selected, bool cameraAvailable)
-        {
-            _primary.key.text = "F";
-            _primary.label.text = label;
-            _secondary.key.text = "F";
-            _secondary.label.text = "내시경 카메라 사용";
-            _secondary.root.SetActive(cameraAvailable);
-            SetSelected(_primary, selected == 0 || !cameraAvailable);
-            SetSelected(_secondary, selected == 1);
-            _visible = true;
-        }
-
-        private static void SetSelected(Row row, bool selected)
-        {
-            row.key.fontStyle = row.label.fontStyle = selected ? FontStyle.Bold : FontStyle.Normal;
-            row.group.alpha = selected ? 1f : 0.38f;
         }
 
         public void Hide() => _visible = false;
@@ -90,8 +69,7 @@ namespace GameJam.UI
             var stackFit = stack.gameObject.AddComponent<ContentSizeFitter>();
             stackFit.horizontalFit = stackFit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             _primary = BuildRow(stack, font);
-            _secondary = BuildRow(stack, font);
-            _secondary.root.SetActive(false);
+            _primary.key.fontStyle = _primary.label.fontStyle = FontStyle.Bold;
 
             _group = gameObject.AddComponent<CanvasGroup>();
             _group.alpha = 0f;

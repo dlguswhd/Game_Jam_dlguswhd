@@ -18,17 +18,12 @@ namespace GameJam.Player
         private PlayerNoise _noise;
         private InteractionPrompt _prompt;
         private IInteractable _focused;
-        private DoorCamera _doorCamera;
-        private int _selectedAction;
-
-        public int SelectedDoorAction => _selectedAction;
 
         private void Awake()
         {
             _health = GetComponent<Health>();
             _noise = GetComponent<PlayerNoise>();
             _prompt = InteractionPrompt.Create();
-            _doorCamera = gameObject.AddComponent<DoorCamera>();
         }
 
         private void OnDestroy()
@@ -38,7 +33,7 @@ namespace GameJam.Player
 
         private void Update()
         {
-            if (PauseMenu.IsPaused || EndScreen.IsShowing || _doorCamera.IsViewing)
+            if (PauseMenu.IsPaused || EndScreen.IsShowing)
             {
                 _prompt.Hide();
                 return;
@@ -51,29 +46,12 @@ namespace GameJam.Player
                 return;
             }
 
-            if (_focused is Door door)
-            {
-                if (door.IsOpen) _selectedAction = 0;
-                _prompt.ShowDoor(door.GetLabel(gameObject), _selectedAction, !door.IsOpen);
-            }
-            else _prompt.Show("F", _focused.GetLabel(gameObject));
+            _prompt.Show("F", _focused.GetLabel(gameObject));
         }
 
         private void RefreshFocus()
         {
-            var next = _health != null && _health.IsDead ? null : FindClosest();
-            if (!ReferenceEquals(next, _focused)) _selectedAction = 0;
-            _focused = next;
-        }
-
-        // Called before the weapon pack consumes wheel input, including on the first frame in reach.
-        public bool TrySelectDoorAction(float scroll)
-        {
-            if (_doorCamera.IsViewing || PauseMenu.IsPaused || EndScreen.IsShowing) return true;
-            RefreshFocus();
-            if (!(_focused is Door door)) return false;
-            if (!door.IsOpen && Mathf.Abs(scroll) > 0.01f) _selectedAction = 1 - _selectedAction;
-            return true;
+            _focused = _health != null && _health.IsDead ? null : FindClosest();
         }
 
         private IInteractable FindClosest()
@@ -107,21 +85,11 @@ namespace GameJam.Player
         public void UseFocused()
         {
             if (PauseMenu.IsPaused || EndScreen.IsShowing || (_health != null && _health.IsDead)) return;
-            if (_doorCamera.IsViewing)
-            {
-                _doorCamera.Close();
-                return;
-            }
             RefreshFocus();
             if (_focused == null) return;
 
             if (_focused is Door door)
             {
-                if (_selectedAction == 1 && !door.IsOpen)
-                {
-                    _doorCamera.Open(door);
-                    return;
-                }
                 if (door.IsLockedFor(gameObject)) return;
                 if (_noise != null) _noise.EmitDoor(door.Center);
             }

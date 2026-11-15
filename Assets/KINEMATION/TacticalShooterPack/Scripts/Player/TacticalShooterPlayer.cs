@@ -185,6 +185,7 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
 
         protected void PlayMovementSounds(float gait, float error = 0.4f)
         {
+            if (!GameJam.World.CheatModes.FootstepSound) return; // (Game Jam) Tab mode menu
             if (Mathf.Approximately(gait, 0f) || _animator.GetBool(TacShooterUtility.Animator_IsInAir.hash))
             {
                 _playback = 0f;
@@ -275,26 +276,6 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
             GetActiveWeapon().OnAiming(_isAiming);
         }
 
-        protected void EquipNextWeapon()
-        {
-            GetActiveWeapon().HideWeapon();
-
-            _activeWeaponIndex++;
-            _activeWeaponIndex = _activeWeaponIndex > _weapons.Count - 1 ? 0 : _activeWeaponIndex;
-
-            EquipWeapon(false);
-        }
-
-        protected void EquipPreviousWeapon()
-        {
-            GetActiveWeapon().HideWeapon();
-
-            _activeWeaponIndex--;
-            _activeWeaponIndex = _activeWeaponIndex < 0 ? _weapons.Count - 1 : _activeWeaponIndex;
-
-            EquipWeapon(false);
-        }
-
         protected void ChangeWeapon()
         {
             GetActiveWeapon().HideWeapon();
@@ -336,12 +317,6 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
         {
             if (_hasActiveAction || _quickDrawPistol) return;
             GetActiveWeapon().Inspect();
-        }
-
-        public void OnToggleAttachment()
-        {
-            if (_quickDrawPistol) return;
-            GetActiveWeapon().ToggleAttachment();
         }
 
         public void OnQuickPistolDraw()
@@ -428,22 +403,9 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
             fpsCamera.SetTargetFOV(_isAiming ? aimFov : baseFov, 6f);
         }
 
-        private void CycleAttachments(AttachmentType type)
-        {
-            if (_quickDrawPistol || GetPrimaryWeapon().IsFiring) return;
-            GetActiveWeapon().Attachments?.CycleAttachments(type);
-        }
-
-        public void OnCycleScope() => CycleAttachments(AttachmentType.Scope);
-        public void OnCycleGrip() => CycleAttachments(AttachmentType.Grip);
-        public void OnCycleMuzzle() => CycleAttachments(AttachmentType.Muzzle);
-        public void OnCycleUnderbarrel() => CycleAttachments(AttachmentType.Underbarrel);
-
-        public void OnCycleSight()
-        {
-            if (_quickDrawPistol) return;
-            GetPrimaryWeapon().Attachments?.CycleScopes();
-        }
+        // (Game Jam) Removed: Tab scope cycling (the 45° red dot; Tab now opens GameJam.UI.ModeMenu),
+        // 1-4 attachment cycling, N attachment toggle and mouse-wheel weapon switching. Attachments are set
+        // from the mode menu; C still swaps weapons.
 
         public void OnUseUnderbarrel()
         {
@@ -479,13 +441,7 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
             if(Input.GetKeyDown(KeyCode.Mouse0)) GetPrimaryWeapon().StartFiring();
             if(Input.GetKeyUp(KeyCode.Mouse0)) GetPrimaryWeapon().StopFiring();
             if(Input.GetKeyDown(KeyCode.T)) OnFreeLook();
-            if(Input.GetKeyDown(KeyCode.Alpha1)) OnCycleScope();
-            if(Input.GetKeyDown(KeyCode.Alpha2)) OnCycleGrip();
-            if(Input.GetKeyDown(KeyCode.Alpha3)) OnCycleMuzzle();
-            if(Input.GetKeyDown(KeyCode.Alpha4)) OnCycleUnderbarrel();
-            if(Input.GetKeyDown(KeyCode.V)) OnCycleSight();
             if(Input.GetKeyDown(KeyCode.P)) OnUseUnderbarrel();
-            if(Input.GetKeyDown(KeyCode.N)) OnToggleAttachment();
 
             _tacProceduralAnimation.moveInput.x = Input.GetAxis("Horizontal");
             _tacProceduralAnimation.moveInput.y = Input.GetAxis("Vertical");
@@ -545,26 +501,6 @@ namespace KINEMATION.TacticalShooterPack.Scripts.Player
             if (_hasActiveAction) return;
 
             _wantsToSprint = _sprintHeld && !_isAiming;
-        }
-
-        public void OnMouseScroll(InputValue value)
-        {
-            var interactor = GetComponent<GameJam.Player.PlayerInteractor>();
-            if (interactor != null && interactor.TrySelectDoorAction(value.Get<float>())) return;
-            if (_hasActiveAction || _quickDrawPistol) return;
-
-            float direction = value.Get<float>();
-
-            if (direction > 0f)
-            {
-                EquipNextWeapon();
-            }
-            else if (direction < 0f)
-            {
-                EquipPreviousWeapon();
-            }
-
-            GetActiveWeapon().RestoreWeaponVisibility();
         }
 #endif
     }

@@ -79,15 +79,6 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "ToggleAttachment",
-                    "type": "Button",
-                    "id": "be7c069b-169e-4d4a-abe9-0c7ef12ffcfa",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
                     "name": "Interact",
                     "type": "Button",
                     "id": "abf9e63c-c1e2-49bd-b1a3-dc0f3edf2bfc",
@@ -142,15 +133,6 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "MouseScroll",
-                    "type": "Value",
-                    "id": "21c3aa02-d6bf-40e1-a348-836a73c356b5",
-                    "expectedControlType": "Axis",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true
-                },
-                {
                     "name": "Lean",
                     "type": "PassThrough",
                     "id": "f84e1c8d-bac0-4528-bb07-9593856c86d8",
@@ -158,51 +140,6 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
-                },
-                {
-                    "name": "CycleScope",
-                    "type": "Button",
-                    "id": "724ba560-5178-4e80-b982-702a96817a00",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "CycleGrip",
-                    "type": "Button",
-                    "id": "724ba560-5178-4e80-b982-702a96817a01",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "CycleMuzzle",
-                    "type": "Button",
-                    "id": "724ba560-5178-4e80-b982-702a96817a02",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "CycleUnderbarrel",
-                    "type": "Button",
-                    "id": "724ba560-5178-4e80-b982-702a96817a03",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "CycleSight",
-                    "type": "Button",
-                    "id": "724ba560-5178-4e80-b982-702a96817a04",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 },
                 {
                     "name": "UseUnderbarrel",
@@ -309,17 +246,6 @@
                     "processors": "",
                     "groups": "",
                     "action": "Aim",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "b5876191-dfa3-4eef-8efb-1284b76994a5",
-                    "path": "<Keyboard>/n",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "ToggleAttachment",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -435,39 +361,6 @@
                 },
                 {
                     "name": "1D Axis",
-                    "id": "38d8fc5f-d52f-47ee-8ad0-f6fc9cf47e8b",
-                    "path": "1DAxis(whichSideWins=1)",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "MouseScroll",
-                    "isComposite": true,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "negative",
-                    "id": "f4536818-2b19-48f4-9114-161839466c37",
-                    "path": "<Mouse>/scroll/down",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "MouseScroll",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "positive",
-                    "id": "46b3352d-dcb7-4624-88c6-58ade9a0caa7",
-                    "path": "<Mouse>/scroll/up",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "MouseScroll",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "1D Axis",
                     "id": "a576997f-8ca5-4089-8ae4-f770168977ef",
                     "path": "1DAxis",
                     "interactions": "",
@@ -498,61 +391,6 @@
                     "action": "Lean",
                     "isComposite": false,
                     "isPartOfComposite": true
-                },
-                {
-                    "name": "",
-                    "id": "69414c10-c210-4e20-a9c3-702a96817b00",
-                    "path": "<Keyboard>/1",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CycleScope",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "69414c10-c210-4e20-a9c3-702a96817b01",
-                    "path": "<Keyboard>/2",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CycleGrip",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "69414c10-c210-4e20-a9c3-702a96817b02",
-                    "path": "<Keyboard>/3",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CycleMuzzle",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "69414c10-c210-4e20-a9c3-702a96817b03",
-                    "path": "<Keyboard>/4",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CycleUnderbarrel",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "69414c10-c210-4e20-a9c3-702a96817b04",
-                    "path": "<Keyboard>/tab",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CycleSight",
-                    "isComposite": false,
-                    "isPartOfComposite": false
                 },
                 {
                     "name": "",

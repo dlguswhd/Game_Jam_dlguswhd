@@ -1,5 +1,6 @@
 using System;
 using GameJam.Enemies;
+using GameJam.World;
 using KINEMATION.TacticalShooterPack.Scripts.Player;
 using KINEMATION.TacticalShooterPack.Scripts.Weapon;
 using UnityEngine;
@@ -97,11 +98,14 @@ namespace GameJam.Player
 
         private void EmitContinuous(NoiseProfile profile)
         {
+            if (CheatModes.Ghost) return;
             Noise.Emit(transform.position, profile.radius, profile.suspicion * Time.deltaTime);
         }
 
         private static void Emit(NoiseProfile profile, Vector3 position)
         {
+            // 유령 모드: enemies can't hear the player.
+            if (CheatModes.Ghost) return;
             Noise.Emit(position, profile.radius, profile.suspicion);
         }
     }

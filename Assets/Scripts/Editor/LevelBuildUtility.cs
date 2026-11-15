@@ -18,6 +18,7 @@ namespace GameJam.EditorTools
             AddIfMissing<PlayerInteractor>(player);
             AddIfMissing<MouseLook>(player);
             AddIfMissing<PlayerFootsteps>(player);
+            AddIfMissing<GameJam.UI.ModeMenu>(player);
         }
 
         public static void AddIfMissing<T>(GameObject go) where T : Component

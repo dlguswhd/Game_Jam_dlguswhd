@@ -264,7 +264,8 @@ namespace GameJam.Enemies
             }
         }
 
-        private bool TargetAlive => _target != null && (_targetHealth == null || !_targetHealth.IsDead);
+        // 유령 모드: the player counts as absent, so enemies neither see nor shoot at them.
+        private bool TargetAlive => _target != null && (_targetHealth == null || !_targetHealth.IsDead) && !CheatModes.Ghost;
 
         private static readonly ProfilerMarker UpdateMarker = new ProfilerMarker(PerfProbe.EnemyUpdate);
         private static readonly ProfilerMarker RepathMarker = new ProfilerMarker(PerfProbe.EnemyRepath);
@@ -312,6 +313,25 @@ namespace GameJam.Enemies
             if (_suspicion < suspiciousThreshold) _hasInvestigatePoint = false;
         }
 
+        // Mode menu's 적 의심도 초기화: forget everything about the player and go back to the calm (green) patrol,
+        // walking the route from the nearest point (guards return to their post).
+        public void ResetAlert()
+        {
+            if (IsDead) return;
+
+            _suspicion = 0f;
+            _inCombat = false;
+            _seesTarget = false;
+            _sightLostTime = float.NegativeInfinity;
+            _lastStimulusTime = float.NegativeInfinity;
+            _hasInvestigatePoint = false;
+            _hasSearchPoint = false;
+            _shotsLeftInBurst = 0;
+            _patrolIndex = ClosestPatrolPoint();
+            _waitUntil = 0f;
+            _nextRepathTime = 0f;
+        }
+
         public void HearNoise(Vector3 position, float suspicion)
         {
             if (IsDead) return;
@@ -349,6 +369,9 @@ namespace GameJam.Enemies
         {
             // Remembered so the killing blow can pick the headshot death.
             _lastHitWasHeadshot = hit.collider != null && hit.collider.GetComponent<HitZone>() != null;
+
+            // 유령 모드: shots from the player still hurt but don't give them away.
+            if (CheatModes.Ghost && _target != null && instigator == _target.gameObject) return;
 
             // Getting shot means a fight, even from behind.
             _lastStimulusTime = Time.time;
